@@ -106,13 +106,24 @@ export default function Navbar() {
 
 function RivetIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="4" fill="currentColor" />
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
-      <line x1="12" y1="2" x2="12" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="12" y1="18" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="2" y1="12" x2="6" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <line x1="18" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <g transform="rotate(-35, 12, 12)">
+        {/* Body with circular die cutout (fill-rule evenodd creates the hole) */}
+        <path
+          fillRule="evenodd"
+          d="M4 4.5Q4 3.5 5 3.5H16Q17 3.5 17 4.5V12.5Q17 13.5 16 13.5H5Q4 13.5 4 12.5ZM5.5 8.5a2 2 0 1 0 4 0 2 2 0 1 0-4 0"
+        />
+        {/* Nose centre barrel */}
+        <rect x="17" y="6" width="5" height="4" rx="0.8" />
+        {/* Upper step collar on nose */}
+        <rect x="17" y="4.5" width="3.5" height="1.5" rx="0.5" />
+        {/* Lower step collar on nose */}
+        <rect x="17" y="10" width="3.5" height="1.5" rx="0.5" />
+        {/* Main handle grip */}
+        <path d="M8 13.5L7 21.5Q7 23 8.5 23H10.5Q12 23 12 21.5L11 13.5Z" />
+        {/* Squeeze lever */}
+        <path d="M12.5 13.5L12 20H15.5L15 13.5Z" />
+      </g>
     </svg>
   )
 }
