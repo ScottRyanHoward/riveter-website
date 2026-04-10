@@ -7,17 +7,19 @@ import TerminalWindow from '@/components/ui/TerminalWindow'
 const terminalLines = [
   { text: 'brew install ScottRyanHoward/riveter/riveter', type: 'command' as const },
   { text: '==> Installing riveter...', type: 'info' as const },
-  { text: '✓  riveter 1.0.0 installed', type: 'success' as const },
+  { text: '✓  riveter installed', type: 'success' as const },
   { text: '', type: 'output' as const },
-  { text: 'riveter scan ./terraform', type: 'command' as const },
-  { text: '✓  Loaded aws-security (43 rules)', type: 'success' as const },
-  { text: '⚠  Scanning 12 Terraform files...', type: 'warning' as const },
+  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' as const },
+  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' as const },
+  { text: 'Scanning 5 resource(s) against 26 rule(s)...', type: 'info' as const },
   { text: '', type: 'output' as const },
-  { text: '  [CRITICAL]  S3 bucket allows public read access', type: 'error' as const },
-  { text: '  [HIGH]      Security group allows 0.0.0.0/0 on port 22', type: 'error' as const },
-  { text: '  [MEDIUM]    RDS instance not encrypted at rest', type: 'warning' as const },
+  { text: '  FAIL  ec2_no_public_ip            aws_instance.web_server', type: 'error' as const },
+  { text: '  FAIL  ec2_encrypted_ebs_volumes   aws_instance.web_server', type: 'error' as const },
+  { text: '  FAIL  s3_bucket_encryption        aws_s3_bucket.data_lake', type: 'error' as const },
+  { text: '  FAIL  security_group_no_wide_open_ingress  aws_security_group.web_sg', type: 'error' as const },
+  { text: '  PASS  ec2_approved_instance_types  aws_instance.web_server', type: 'success' as const },
   { text: '', type: 'output' as const },
-  { text: '3 violations found across 12 files', type: 'info' as const },
+  { text: '9 FAIL  3 PASS  18 SKIP  |  5 resources  |  26 rules', type: 'info' as const },
 ]
 
 export default function Hero() {

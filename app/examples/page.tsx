@@ -8,48 +8,53 @@ export const metadata = {
   description: 'Code examples for riveter: basic scans, custom rules, CI/CD integration, AI rule generation, and output formats.',
 }
 
-const basicScanTF = `# main.tf — example with security issues
-resource "aws_s3_bucket" "assets" {
-  bucket = "my-app-assets"
+const basicScanTF = `# main.tf — example with security misconfigurations
+resource "aws_instance" "web_server" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.micro"
 
-  # Missing: block_public_acls, block_public_policy
-  # riveter will flag this as CRITICAL
-}
+  associate_public_ip_address = true  # FAIL: ec2_no_public_ip
 
-resource "aws_security_group" "web" {
-  name   = "web-sg"
-  vpc_id = aws_vpc.main.id
+  root_block_device {
+    # encrypted not set — FAIL: ec2_encrypted_ebs_volumes
+  }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # HIGH: unrestricted SSH
+  tags = {
+    Name        = "web-server"
+    Environment = "production"
   }
 }
 
-resource "aws_db_instance" "prod" {
-  identifier     = "prod-db"
-  engine         = "mysql"
-  instance_class = "db.t3.micro"
-  # Missing: storage_encrypted = true  — MEDIUM
+resource "aws_s3_bucket" "data_lake" {
+  bucket = "my-data-lake"
+  # FAIL: s3_bucket_encryption — missing server_side_encryption_configuration
+}
+
+resource "aws_security_group" "web_sg" {
+  name        = "web-sg"
+  description = "Security group for web tier"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # FAIL: security_group_no_wide_open_ingress
+  }
 }`
 
 const basicScanOutput = [
-  { text: 'riveter scan ./terraform --pack aws-security', type: 'command' as const },
-  { text: '✓  Loaded aws-security pack (43 rules)', type: 'success' as const },
-  { text: 'Scanning 3 files...', type: 'info' as const },
+  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' as const },
+  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' as const },
+  { text: 'Scanning 3 resource(s) against 26 rule(s)...', type: 'info' as const },
   { text: '', type: 'output' as const },
-  { text: '  [CRITICAL]  S3 public access not blocked', type: 'error' as const },
-  { text: '             aws_s3_bucket.assets — main.tf:1', type: 'output' as const },
+  { text: '  FAIL  ec2_no_public_ip              aws_instance.web_server', type: 'error' as const },
+  { text: '  FAIL  ec2_encrypted_ebs_volumes     aws_instance.web_server', type: 'error' as const },
+  { text: '  FAIL  s3_bucket_encryption          aws_s3_bucket.data_lake', type: 'error' as const },
+  { text: '  FAIL  security_group_no_wide_open_ingress  aws_security_group.web_sg', type: 'error' as const },
+  { text: '  PASS  ec2_approved_instance_types   aws_instance.web_server', type: 'success' as const },
   { text: '', type: 'output' as const },
-  { text: '  [HIGH]      Security group allows unrestricted SSH', type: 'error' as const },
-  { text: '             aws_security_group.web — main.tf:10', type: 'output' as const },
-  { text: '', type: 'output' as const },
-  { text: '  [MEDIUM]    RDS instance storage not encrypted', type: 'warning' as const },
-  { text: '             aws_db_instance.prod — main.tf:22', type: 'output' as const },
-  { text: '', type: 'output' as const },
-  { text: '3 violations found', type: 'error' as const },
+  { text: '4 FAIL  1 PASS  21 SKIP  |  3 resources  |  26 rules', type: 'info' as const },
 ]
 
 const customRulesYaml = `# team-rules.yaml
@@ -87,17 +92,18 @@ rules:
         value: false`
 
 const customRulesUsage = `# Use custom rules standalone
-riveter scan ./terraform --rules ./team-rules.yaml
+riveter scan -r ./team-rules.yaml -t ./main.tf
 
 # Combine with a built-in pack
-riveter scan ./terraform \\
-  --pack aws-security \\
-  --rules ./team-rules.yaml
+riveter scan -p aws-security \\
+  -r ./team-rules.yaml \\
+  -t ./main.tf
 
 # Use multiple custom rule files
-riveter scan ./terraform \\
-  --rules ./team-rules.yaml \\
-  --rules ./data-rules.yaml`
+riveter scan -p aws-security \\
+  -r ./team-rules.yaml \\
+  -r ./data-rules.yaml \\
+  -t ./main.tf`
 
 const cicdYaml = `# .github/workflows/infra-validation.yml
 name: Infrastructure Validation
@@ -122,9 +128,9 @@ jobs:
 
       - name: Scan with SARIF output
         run: |
-          riveter scan ./terraform \\
-            --pack aws-security \\
-            --pack aws-cis \\
+          riveter scan -p aws-security \\
+            -p aws-cis \\
+            -t ./terraform \\
             --output sarif > results.sarif
 
       - name: Upload SARIF to GitHub
@@ -136,8 +142,8 @@ jobs:
       # Also generate JUnit XML for the test summary
       - name: Scan with JUnit output
         run: |
-          riveter scan ./terraform \\
-            --pack aws-security \\
+          riveter scan -p aws-security \\
+            -t ./terraform \\
             --output junit > junit-results.xml
 
       - name: Publish test results
@@ -158,8 +164,8 @@ riveter:
     - /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     - brew install ScottRyanHoward/riveter/riveter
   script:
-    - riveter scan ./terraform
-        --pack aws-security
+    - riveter scan -p aws-security
+        -t ./terraform
         --output junit > report.xml
   artifacts:
     when: always
@@ -311,18 +317,31 @@ const tabs = [
             desc: 'Machine-readable output for dashboards, custom tooling, or further processing.',
             code: `{
   "summary": {
-    "files_scanned": 12,
-    "violations": 3,
-    "critical": 1, "high": 1, "medium": 1, "low": 0
+    "resources_scanned": 3,
+    "rules_evaluated": 26,
+    "total": 26,
+    "failed": 4,
+    "passed": 1,
+    "skipped": 21
   },
-  "violations": [
+  "results": [
     {
-      "rule_id": "s3-public-read-blocked",
-      "severity": "CRITICAL",
-      "resource": "aws_s3_bucket.assets",
-      "file": "main.tf", "line": 12,
-      "message": "S3 bucket allows public read access",
-      "remediation": "Set block_public_acls and block_public_policy to true"
+      "status": "FAIL",
+      "rule_id": "ec2_no_public_ip",
+      "resource": "aws_instance.web_server",
+      "message": "Expected 'associate_public_ip_address' to equal False, got True"
+    },
+    {
+      "status": "FAIL",
+      "rule_id": "s3_bucket_encryption",
+      "resource": "aws_s3_bucket.data_lake",
+      "message": "server_side_encryption_configuration is missing or empty"
+    },
+    {
+      "status": "PASS",
+      "rule_id": "ec2_approved_instance_types",
+      "resource": "aws_instance.web_server",
+      "message": "All checks passed"
     }
   ]
 }`,
@@ -336,12 +355,12 @@ const tabs = [
   "version": "2.1.0",
   "runs": [{ "tool": { "driver": { "name": "riveter" } },
     "results": [{
-      "ruleId": "s3-public-read-blocked",
+      "ruleId": "ec2_no_public_ip",
       "level": "error",
-      "message": { "text": "S3 bucket allows public read access" },
+      "message": { "text": "Expected 'associate_public_ip_address' to equal False, got True" },
       "locations": [{ "physicalLocation": {
         "artifactLocation": { "uri": "main.tf" },
-        "region": { "startLine": 12 }
+        "region": { "startLine": 4 }
       }}]
     }]
   }]
