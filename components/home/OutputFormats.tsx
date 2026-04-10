@@ -4,7 +4,129 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import CodeBlock from '@/components/examples/CodeBlock'
 
-const formats = [
+// ── HTML report preview ──────────────────────────────────────────────────────
+
+const reportRows = [
+  { status: 'FAIL', ruleId: 'ec2_no_public_ip',                  resource: 'aws_instance.web_server',          message: "Expected 'associate_public_ip_address' to equal False, got True" },
+  { status: 'FAIL', ruleId: 'ec2_encrypted_ebs_volumes',         resource: 'aws_instance.web_server',          message: "Expected 'root_block_device.encrypted' to equal True, got None" },
+  { status: 'PASS', ruleId: 'ec2_approved_instance_types',       resource: 'aws_instance.web_server',          message: 'All checks passed' },
+  { status: 'FAIL', ruleId: 's3_bucket_encryption',              resource: 'aws_s3_bucket.data_lake',          message: 'server_side_encryption_configuration is missing or empty' },
+  { status: 'FAIL', ruleId: 'security_group_no_wide_open_ingress', resource: 'aws_security_group.web_sg',      message: 'Expected subset is not contained in actual ingress rules' },
+  { status: 'PASS', ruleId: 'security_group_description_required', resource: 'aws_security_group.web_sg',     message: 'All checks passed' },
+  { status: 'SKIP', ruleId: 's3_bucket_public_access_block',     resource: 'N/A',                             message: 'SKIPPED: No matching resources found for this rule' },
+  { status: 'SKIP', ruleId: 's3_bucket_logging',                 resource: 'N/A',                             message: 'SKIPPED: No matching resources found for this rule' },
+]
+
+const statusStyles: Record<string, string> = {
+  FAIL: 'bg-red-950 text-red-400 border border-red-800',
+  PASS: 'bg-green-950 text-green-400 border border-green-800',
+  SKIP: 'bg-zinc-800 text-zinc-400 border border-zinc-700',
+}
+
+function HtmlReportPreview() {
+  return (
+    <div className="rounded-lg overflow-hidden border border-[var(--color-border)] text-xs font-sans">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border-b border-zinc-700">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+        </div>
+        <div className="flex-1 mx-2 bg-zinc-700 rounded px-2 py-0.5 text-zinc-400 text-[10px] font-mono truncate">
+          riveter-report.html
+        </div>
+      </div>
+
+      {/* Report header */}
+      <div className="bg-[#0d0d14] px-5 py-3 border-b border-zinc-800 flex items-center gap-2">
+        <span className="text-[var(--color-accent)] font-bold text-sm">riveter</span>
+        <span className="text-zinc-500 text-xs">—</span>
+        <span className="text-zinc-300 text-xs">Infrastructure Rule Enforcement Report</span>
+      </div>
+
+      {/* Summary cards */}
+      <div className="bg-[#0f0f1a] px-5 py-4 grid grid-cols-4 gap-3 border-b border-zinc-800">
+        <div className="text-center py-3 rounded border border-zinc-700 bg-zinc-900">
+          <div className="text-xl font-bold text-zinc-100">30</div>
+          <div className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wide">Total Checks</div>
+        </div>
+        <div className="text-center py-3 rounded border border-green-900 bg-green-950/50">
+          <div className="text-xl font-bold text-green-400">3</div>
+          <div className="text-[10px] text-green-700 mt-0.5 uppercase tracking-wide">Passed</div>
+        </div>
+        <div className="text-center py-3 rounded border border-red-900 bg-red-950/50">
+          <div className="text-xl font-bold text-red-400">9</div>
+          <div className="text-[10px] text-red-700 mt-0.5 uppercase tracking-wide">Failed</div>
+        </div>
+        <div className="text-center py-3 rounded border border-zinc-700 bg-zinc-900">
+          <div className="text-xl font-bold text-zinc-400">18</div>
+          <div className="text-[10px] text-zinc-600 mt-0.5 uppercase tracking-wide">Skipped</div>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-[#0f0f1a] px-5 py-2.5 flex gap-2 border-b border-zinc-800">
+        <select
+          className="bg-zinc-800 border border-zinc-700 text-zinc-400 text-[11px] rounded px-2 py-1 cursor-pointer"
+          defaultValue="all"
+          onChange={() => {}}
+        >
+          <option value="all">All statuses</option>
+          <option value="fail">FAIL</option>
+          <option value="pass">PASS</option>
+          <option value="skip">SKIP</option>
+        </select>
+        <input
+          className="bg-zinc-800 border border-zinc-700 text-zinc-400 text-[11px] rounded px-2 py-1 flex-1 placeholder-zinc-600"
+          placeholder="Search rule ID or resource..."
+          readOnly
+        />
+      </div>
+
+      {/* Table */}
+      <div className="bg-[#0d0d14] overflow-x-auto">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="border-b border-zinc-800">
+              <th className="px-4 py-2 text-left text-zinc-500 font-semibold uppercase tracking-wide w-16">Status</th>
+              <th className="px-4 py-2 text-left text-zinc-500 font-semibold uppercase tracking-wide">Rule ID</th>
+              <th className="px-4 py-2 text-left text-zinc-500 font-semibold uppercase tracking-wide">Resource</th>
+              <th className="px-4 py-2 text-left text-zinc-500 font-semibold uppercase tracking-wide">Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reportRows.map((row, i) => (
+              <tr key={i} className="border-b border-zinc-800/60 hover:bg-zinc-900/40 transition-colors">
+                <td className="px-4 py-2">
+                  <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-bold font-mono', statusStyles[row.status])}>
+                    {row.status}
+                  </span>
+                </td>
+                <td className="px-4 py-2 font-mono text-zinc-300">{row.ruleId}</td>
+                <td className="px-4 py-2 font-mono text-zinc-400 whitespace-nowrap">{row.resource}</td>
+                <td className="px-4 py-2 text-zinc-500 max-w-[220px] truncate">{row.message}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Format definitions ────────────────────────────────────────────────────────
+
+type Format = {
+  id: string
+  label: string
+  description: string
+  htmlPreview?: boolean
+  code?: string
+  language?: string
+}
+
+const formats: Format[] = [
   {
     id: 'table',
     label: 'Table',
@@ -34,31 +156,7 @@ Scanning 5 resource(s) against 26 rule(s)...
     id: 'html',
     label: 'HTML',
     description: 'Interactive report with summary cards (Total / Passed / Failed / Skipped), status filtering, and a searchable results table. Open in any browser.',
-    code: `<!-- riveter - Infrastructure Rule Enforcement Report -->
-<!--
-  Summary cards:
-    30  TOTAL CHECKS
-     3  PASSED
-     9  FAILED
-    18  SKIPPED
-
-  Filterable table:
-  ┌─────────┬───────────────────────────────────┬────────────────────────────┬──────────────────────────────────────────────────┐
-  │ STATUS  │ RULE ID                           │ RESOURCE                   │ MESSAGE                                          │
-  ├─────────┼───────────────────────────────────┼────────────────────────────┼──────────────────────────────────────────────────┤
-  │ FAIL    │ ec2_no_public_ip                  │ web_server                 │ Expected 'associate_public_ip_address' to equal  │
-  │         │                                   │                            │ False, got True                                  │
-  │ FAIL    │ ec2_encrypted_ebs_volumes         │ web_server                 │ Expected 'root_block_device.encrypted' to equal  │
-  │         │                                   │                            │ True, got None                                   │
-  │ PASS    │ ec2_approved_instance_types       │ web_server                 │ All checks passed                                │
-  │ FAIL    │ s3_bucket_encryption              │ data_lake                  │ server_side_encryption_configuration is missing  │
-  │ FAIL    │ security_group_no_wide_open_ingress│ web_sg                    │ Expected subset is not contained in ingress rules│
-  │ SKIP    │ rds_encrypted_storage             │ N/A                        │ SKIPPED: No matching resources found             │
-  └─────────┴───────────────────────────────────┴────────────────────────────┴──────────────────────────────────────────────────┘
-
-  "All statuses" dropdown · "Search rule ID or resource..." field
--->`,
-    language: 'text',
+    htmlPreview: true,
   },
   {
     id: 'json',
@@ -206,7 +304,11 @@ export default function OutputFormats() {
           <p className="text-sm text-[var(--color-text-secondary)] text-center mb-4">
             {current.description}
           </p>
-          <CodeBlock code={current.code} language={current.language} />
+          {current.htmlPreview ? (
+            <HtmlReportPreview />
+          ) : (
+            <CodeBlock code={current.code!} language={current.language!} />
+          )}
         </div>
       </div>
     </section>

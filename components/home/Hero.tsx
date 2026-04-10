@@ -2,24 +2,54 @@ import Link from 'next/link'
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import GradientText from '@/components/ui/GradientText'
-import TerminalWindow from '@/components/ui/TerminalWindow'
+import TerminalWindow, { TerminalLine } from '@/components/ui/TerminalWindow'
 
-const terminalLines = [
-  { text: 'brew install ScottRyanHoward/riveter/riveter', type: 'command' as const },
-  { text: '==> Installing riveter...', type: 'info' as const },
-  { text: '✓  riveter installed', type: 'success' as const },
-  { text: '', type: 'output' as const },
-  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' as const },
-  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' as const },
-  { text: 'Scanning 5 resource(s) against 26 rule(s)...', type: 'info' as const },
-  { text: '', type: 'output' as const },
-  { text: '  FAIL  ec2_no_public_ip            aws_instance.web_server', type: 'error' as const },
-  { text: '  FAIL  ec2_encrypted_ebs_volumes   aws_instance.web_server', type: 'error' as const },
-  { text: '  FAIL  s3_bucket_encryption        aws_s3_bucket.data_lake', type: 'error' as const },
-  { text: '  FAIL  security_group_no_wide_open_ingress  aws_security_group.web_sg', type: 'error' as const },
-  { text: '  PASS  ec2_approved_instance_types  aws_instance.web_server', type: 'success' as const },
-  { text: '', type: 'output' as const },
-  { text: '9 FAIL  3 PASS  18 SKIP  |  5 resources  |  26 rules', type: 'info' as const },
+// Column widths: status=9, rule_id=35, resource=rest
+// Status segment is 5 chars (` FAIL`), then seg2 has 4 leading spaces to complete the 9-char status column
+const F = 'text-[var(--color-severity-critical)]'
+const P = 'text-[var(--color-severity-low)]'
+const S = 'text-[var(--color-text-muted)]'
+const T = 'text-[var(--color-text-secondary)]'
+const M = 'text-[var(--color-text-muted)]'
+
+const terminalLines: TerminalLine[] = [
+  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' },
+  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' },
+  { text: 'Scanning 5 resource(s) against 26 rule(s)...', type: 'info' },
+  { text: '' },
+  { text: ' Status  Rule ID                             Resource', type: 'output' },
+  { text: ' ──────  ──────────────────────────────────  ─────────────────────────────────', type: 'output' },
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    ec2_no_public_ip                    aws_instance.web_server', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    ec2_encrypted_ebs_volumes           aws_instance.web_server', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    s3_bucket_encryption                aws_s3_bucket.data_lake', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    security_group_no_wide_open_ingress  aws_security_group.web_sg', className: T },
+  ]},
+  { segments: [
+    { text: ' PASS', className: P },
+    { text: '    ec2_approved_instance_types         aws_instance.web_server', className: T },
+  ]},
+  { segments: [
+    { text: ' SKIP', className: S },
+    { text: '    s3_bucket_public_access_block       N/A', className: M },
+  ]},
+  { text: '' },
+  { segments: [
+    { text: '9 FAIL', className: F },
+    { text: '  ', className: T },
+    { text: '3 PASS', className: P },
+    { text: '  18 SKIP  |  5 resources  |  26 rules', className: T },
+  ]},
 ]
 
 export default function Hero() {

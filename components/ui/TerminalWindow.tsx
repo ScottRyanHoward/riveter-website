@@ -2,8 +2,14 @@
 
 import { cn } from '@/lib/utils'
 
-interface TerminalLine {
+export interface TerminalSegment {
   text: string
+  className?: string
+}
+
+export interface TerminalLine {
+  text?: string
+  segments?: TerminalSegment[]
   type?: 'command' | 'success' | 'error' | 'warning' | 'info' | 'output'
 }
 
@@ -36,13 +42,23 @@ export default function TerminalWindow({ title = 'terminal', lines, className }:
       </div>
 
       {/* Body */}
-      <div className="bg-[var(--color-surface)] p-4 font-mono text-sm space-y-1 min-h-[120px]">
+      <div className="bg-[var(--color-surface)] p-4 font-mono text-sm space-y-0.5 min-h-[120px] overflow-x-auto">
         {lines.map((line, i) => (
-          <div key={i} className={cn('leading-relaxed', lineColors[line.type || 'output'])}>
-            {line.type === 'command' && (
-              <span className="text-[var(--color-accent)] mr-2">$</span>
+          <div key={i} className={cn('leading-relaxed whitespace-pre', lineColors[line.type || 'output'])}>
+            {line.segments ? (
+              <>
+                {line.segments.map((seg, j) => (
+                  <span key={j} className={seg.className}>{seg.text}</span>
+                ))}
+              </>
+            ) : (
+              <>
+                {line.type === 'command' && (
+                  <span className="text-[var(--color-accent)] mr-2">$</span>
+                )}
+                <span>{line.text}</span>
+              </>
             )}
-            <span>{line.text}</span>
           </div>
         ))}
         <div className="flex items-center gap-1 mt-2">
