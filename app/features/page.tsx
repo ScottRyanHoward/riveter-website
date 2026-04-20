@@ -121,30 +121,63 @@ export default function FeaturesPage() {
 
         {/* Core Scanning */}
         <section id="scanning">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
-              <Shield className="w-5 h-5 text-[var(--color-accent)]" />
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-[var(--color-accent)]" />
+                </div>
+                <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Core Scanning</h2>
+              </div>
+              <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6">
+                Point riveter at any Terraform file or directory. It recursively finds all <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">.tf</code> files,
+                maps resources to rule violations, and produces a prioritized report.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Recursive directory scanning',
+                  'Non-zero exit code on violations — ideal for CI/CD gates',
+                  'Select one or multiple compliance packs per scan',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-severity-low)] mt-0.5 shrink-0">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Core Scanning</h2>
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
+              <div className="px-4 py-3 bg-[var(--color-surface-2)] border-b border-[var(--color-border)] text-xs text-[var(--color-text-muted)] font-mono">
+                Usage
+              </div>
+              <div className="p-5 space-y-4 font-mono text-sm">
+                <div>
+                  <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Scan a file</div>
+                  <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan main.tf <span className="text-[var(--color-text-muted)]">-p aws-security</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Scan a directory</div>
+                  <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">-p aws-security</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Multiple packs</div>
+                  <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">-p aws-security -p cis</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Choose output format</div>
+                  <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">--output json</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6 max-w-2xl">
-            Point riveter at any Terraform file or directory. It recursively finds all <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">.tf</code> files,
-            maps resources to rule violations, and produces a prioritized report.
-          </p>
-          <ul className="space-y-3">
-            {[
-              'Recursive directory scanning',
-              'Severity levels: critical, high, medium, low',
-              'Resource-level violation pinpointing with file and line numbers',
-              'Non-zero exit code on violations — ideal for CI/CD gates',
-              'Select one or multiple compliance packs per scan',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--color-text-secondary)]">
-                <span className="text-[var(--color-severity-low)] mt-0.5 shrink-0">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
         </section>
 
         {/* Custom Rules */}
