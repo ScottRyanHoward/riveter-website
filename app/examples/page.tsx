@@ -1,7 +1,7 @@
 import PageHeader from '@/components/layout/PageHeader'
 import TabGroup from '@/components/examples/TabGroup'
 import CodeBlock from '@/components/examples/CodeBlock'
-import TerminalWindow from '@/components/ui/TerminalWindow'
+import TerminalWindow, { TerminalLine } from '@/components/ui/TerminalWindow'
 
 export const metadata = {
   title: 'Examples — riveter',
@@ -43,18 +43,73 @@ resource "aws_security_group" "web_sg" {
   }
 }`
 
-const basicScanOutput = [
-  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' as const },
-  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' as const },
-  { text: 'Scanning 3 resource(s) against 26 rule(s)...', type: 'info' as const },
-  { text: '', type: 'output' as const },
-  { text: '  FAIL  ec2_no_public_ip              aws_instance.web_server', type: 'error' as const },
-  { text: '  FAIL  ec2_encrypted_ebs_volumes     aws_instance.web_server', type: 'error' as const },
-  { text: '  FAIL  s3_bucket_encryption          aws_s3_bucket.data_lake', type: 'error' as const },
-  { text: '  FAIL  security_group_no_wide_open_ingress  aws_security_group.web_sg', type: 'error' as const },
-  { text: '  PASS  ec2_approved_instance_types   aws_instance.web_server', type: 'success' as const },
-  { text: '', type: 'output' as const },
-  { text: '4 FAIL  1 PASS  21 SKIP  |  3 resources  |  26 rules', type: 'info' as const },
+const F = 'text-[var(--color-severity-critical)]'
+const P = 'text-[var(--color-severity-low)]'
+const S = 'text-[var(--color-text-muted)]'
+const T = 'text-[var(--color-text-secondary)]'
+const M = 'text-[var(--color-text-muted)]'
+
+const basicScanOutput: TerminalLine[] = [
+  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' },
+  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' },
+  { text: 'Scanning 3 resource(s) against 26 rule(s)...', type: 'info' },
+  { text: '' },
+  { text: ' Status  Rule ID                             Resource                          Message', type: 'output' },
+  { text: ' ──────  ──────────────────────────────────  ────────────────────────────────  ─────────────────────────────────────────────────────', type: 'output' },
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: "    ec2_no_public_ip                    aws_instance.web_server           Expected 'associate_public_ip_address' to equal False, got True", className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: "    ec2_encrypted_ebs_volumes           aws_instance.web_server           Expected 'root_block_device.encrypted' to equal True, got None", className: T },
+  ]},
+  { segments: [
+    { text: ' PASS', className: P },
+    { text: '    ec2_approved_instance_types         aws_instance.web_server           All checks passed', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    ec2_required_tags                   aws_instance.web_server           Failed checks: tags.Owner, tags.Project', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    s3_bucket_encryption                aws_s3_bucket.data_lake           server_side_encryption_configuration is missing or empty', className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: "    s3_bucket_versioning                aws_s3_bucket_versioning.data_lake  Expected 'versioning_configuration.status' to equal 'Enabled', got None", className: T },
+  ]},
+  { segments: [
+    { text: ' FAIL', className: F },
+    { text: '    security_group_no_wide_open_ingress  aws_security_group.web_sg         Expected subset is not contained in actual ingress rules', className: T },
+  ]},
+  { segments: [
+    { text: ' PASS', className: P },
+    { text: '    security_group_description_required  aws_security_group.web_sg         All checks passed', className: T },
+  ]},
+  { segments: [
+    { text: ' SKIP', className: S },
+    { text: '    s3_bucket_public_access_block       N/A                               SKIPPED: No matching resources found for this rule', className: M },
+  ]},
+  { segments: [
+    { text: ' SKIP', className: S },
+    { text: '    rds_encrypted_storage              N/A                               SKIPPED: No matching resources found for this rule', className: M },
+  ]},
+  { text: '' },
+  { segments: [
+    { text: 'Passed:   ', className: T },
+    { text: '2', className: P },
+  ]},
+  { segments: [
+    { text: 'Failed:   ', className: T },
+    { text: '6', className: F },
+  ]},
+  { text: 'Skipped:  18 (no matching resources found)', type: 'output' },
+  { text: '' },
+  { segments: [
+    { text: '6 check(s) failed.', className: F },
+  ]},
 ]
 
 const customRulesYaml = `# team-rules.yaml

@@ -7,9 +7,17 @@ export interface TerminalSegment {
   className?: string
 }
 
+export interface TerminalColumn {
+  text: string
+  className?: string
+  width?: string  // CSS width, e.g. '8ch'
+  flex?: boolean  // takes remaining space
+}
+
 export interface TerminalLine {
   text?: string
   segments?: TerminalSegment[]
+  columns?: TerminalColumn[]
   type?: 'command' | 'success' | 'error' | 'warning' | 'info' | 'output'
 }
 
@@ -17,6 +25,8 @@ interface TerminalWindowProps {
   title?: string
   lines: TerminalLine[]
   className?: string
+  maxHeight?: string
+  compact?: boolean
 }
 
 const lineColors: Record<string, string> = {
@@ -28,7 +38,7 @@ const lineColors: Record<string, string> = {
   output: 'text-[var(--color-text-secondary)]',
 }
 
-export default function TerminalWindow({ title = 'terminal', lines, className }: TerminalWindowProps) {
+export default function TerminalWindow({ title = 'terminal', lines, className, maxHeight, compact }: TerminalWindowProps) {
   return (
     <div className={cn('rounded-lg overflow-hidden border border-[var(--color-border)] shadow-xl', className)}>
       {/* Header */}
@@ -42,15 +52,37 @@ export default function TerminalWindow({ title = 'terminal', lines, className }:
       </div>
 
       {/* Body */}
-      <div className="bg-[var(--color-surface)] p-4 font-mono text-sm space-y-0.5 min-h-[120px] overflow-x-auto">
+      <div
+        className={cn(
+          'bg-[var(--color-surface)] p-4 font-mono space-y-0.5 min-h-[120px] overflow-x-auto',
+          compact ? 'text-xs' : 'text-sm',
+          maxHeight && 'overflow-y-auto',
+        )}
+        style={maxHeight ? { maxHeight } : undefined}
+      >
         {lines.map((line, i) => (
-          <div key={i} className={cn('leading-relaxed whitespace-pre', lineColors[line.type || 'output'])}>
-            {line.segments ? (
-              <>
-                {line.segments.map((seg, j) => (
-                  <span key={j} className={seg.className}>{seg.text}</span>
-                ))}
-              </>
+          <div
+            key={i}
+            className={cn(
+              'leading-relaxed',
+              line.columns ? 'flex' : 'whitespace-pre',
+              lineColors[line.type || 'output'],
+            )}
+          >
+            {line.columns ? (
+              line.columns.map((col, j) => (
+                <span
+                  key={j}
+                  className={cn('whitespace-pre shrink-0', col.className, col.flex && 'flex-1 shrink min-w-0')}
+                  style={!col.flex && col.width ? { width: col.width } : undefined}
+                >
+                  {col.text}
+                </span>
+              ))
+            ) : line.segments ? (
+              line.segments.map((seg, j) => (
+                <span key={j} className={seg.className}>{seg.text}</span>
+              ))
             ) : (
               <>
                 {line.type === 'command' && (

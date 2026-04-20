@@ -2,54 +2,89 @@ import Link from 'next/link'
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import GradientText from '@/components/ui/GradientText'
-import TerminalWindow, { TerminalLine } from '@/components/ui/TerminalWindow'
+import TerminalWindow, { TerminalLine, TerminalColumn } from '@/components/ui/TerminalWindow'
 
-// Column widths: status=9, rule_id=35, resource=rest
-// Status segment is 5 chars (` FAIL`), then seg2 has 4 leading spaces to complete the 9-char status column
 const F = 'text-[var(--color-severity-critical)]'
 const P = 'text-[var(--color-severity-low)]'
 const S = 'text-[var(--color-text-muted)]'
 const T = 'text-[var(--color-text-secondary)]'
 const M = 'text-[var(--color-text-muted)]'
 
+// Column widths: status=8ch, ruleId=38ch (36 content + 2 sep), resource=40ch (38 content + 2 sep), message=flex
+const W_STATUS = '8ch'
+const W_RULE = '38ch'
+const W_RESOURCE = '40ch'
+
+const pad = (s: string, n: number) => s.padEnd(n)
+
+function tableRow(status: string, sc: string, ruleId: string, resource: string, message: string, cc = T): TerminalLine {
+  return {
+    columns: [
+      { text: ` ${status}   `, className: sc, width: W_STATUS },
+      { text: pad(ruleId, 36) + '  ', className: cc, width: W_RULE },
+      { text: pad(resource, 38) + '  ', className: cc, width: W_RESOURCE },
+      { text: message, className: cc, flex: true },
+    ] as TerminalColumn[],
+  }
+}
+
 const terminalLines: TerminalLine[] = [
   { text: 'riveter scan -p aws-security -t main.tf', type: 'command' },
   { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' },
   { text: 'Scanning 5 resource(s) against 26 rule(s)...', type: 'info' },
   { text: '' },
-  { text: ' Status  Rule ID                             Resource', type: 'output' },
-  { text: ' ──────  ──────────────────────────────────  ─────────────────────────────────', type: 'output' },
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    ec2_no_public_ip                    aws_instance.web_server', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    ec2_encrypted_ebs_volumes           aws_instance.web_server', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    s3_bucket_encryption                aws_s3_bucket.data_lake', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    security_group_no_wide_open_ingress  aws_security_group.web_sg', className: T },
-  ]},
-  { segments: [
-    { text: ' PASS', className: P },
-    { text: '    ec2_approved_instance_types         aws_instance.web_server', className: T },
-  ]},
-  { segments: [
-    { text: ' SKIP', className: S },
-    { text: '    s3_bucket_public_access_block       N/A', className: M },
-  ]},
+  {
+    columns: [
+      { text: pad(' Status', 8), className: T, width: W_STATUS },
+      { text: pad('Rule ID', 36) + '  ', className: T, width: W_RULE },
+      { text: pad('Resource', 38) + '  ', className: T, width: W_RESOURCE },
+      { text: 'Message', className: T, flex: true },
+    ],
+  },
+  {
+    columns: [
+      { text: ' ' + '─'.repeat(6) + ' ', className: T, width: W_STATUS },
+      { text: '─'.repeat(36) + '  ', className: T, width: W_RULE },
+      { text: '─'.repeat(38) + '  ', className: T, width: W_RESOURCE },
+      { text: '─'.repeat(50), className: T, flex: true },
+    ],
+  },
+  tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.web_server',                   "Expected 'associate_public_ip_address' to equal False, got True"),
+  tableRow('FAIL', F, 'ec2_encrypted_ebs_volumes',           'aws_instance.web_server',                   "Expected 'root_block_device.encrypted' to equal True, got None"),
+  tableRow('PASS', P, 'ec2_approved_instance_types',         'aws_instance.web_server',                   'All checks passed'),
+  tableRow('PASS', P, 'ec2_required_tags',                   'aws_instance.web_server',                   'All checks passed'),
+  tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.worker',                       "Expected 'associate_public_ip_address' to equal False, got None"),
+  tableRow('FAIL', F, 'ec2_encrypted_ebs_volumes',           'aws_instance.worker',                       "Expected 'root_block_device.encrypted' to equal True, got None"),
+  tableRow('FAIL', F, 'ec2_approved_instance_types',         'aws_instance.worker',                       "Value 't2.micro' does not match pattern '^(t3|t4g|m5|m6i|c5|c6i|r5|r6i)\\.(large|xlarge|2xlarge)$'"),
+  tableRow('FAIL', F, 'ec2_required_tags',                   'aws_instance.worker',                       'Failed checks: tags.Owner, tags.Project'),
+  tableRow('FAIL', F, 's3_bucket_encryption',                'aws_s3_bucket.data_lake',                   'server_side_encryption_configuration is missing or empty'),
+  tableRow('FAIL', F, 's3_bucket_versioning',                'aws_s3_bucket_versioning.data_lake',        "Expected 'versioning_configuration.status' to equal 'Enabled', got None"),
+  tableRow('FAIL', F, 'security_group_no_wide_open_ingress', 'aws_security_group.web_sg',                 "Expected subset [{'from_port': {'ne': 22}, ...}] is not contained in ingress rules"),
+  tableRow('PASS', P, 'security_group_description_required', 'aws_security_group.web_sg',                 'All checks passed'),
+  tableRow('SKIP', S, 's3_bucket_public_access_block',       'aws_s3_bucket_public_access_block.N/A',     'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 's3_bucket_logging',                   'aws_s3_bucket_logging.N/A',                 'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_encrypted_storage',               'aws_db_instance.N/A',                       'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_backup_retention',                'aws_db_instance.N/A',                       'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_multi_az',                        'aws_db_instance.N/A',                       'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_no_public_access',                'aws_db_instance.N/A',                       'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'vpc_flow_logs',                       'aws_flow_log.N/A',                          'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'iam_user_no_inline_policies',         'aws_iam_user.N/A',                          'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'iam_role_assume_role_policy_required','aws_iam_role.N/A',                          'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'iam_policy_no_wildcard_actions',      'aws_iam_policy.N/A',                        'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'cloudtrail_enabled',                  'aws_cloudtrail.N/A',                        'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'cloudtrail_log_file_validation',      'aws_cloudtrail.N/A',                        'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'kms_key_rotation',                    'aws_kms_key.N/A',                           'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'kms_key_description_required',        'aws_kms_key.N/A',                           'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'lambda_function_dead_letter_queue',   'aws_lambda_function.N/A',                   'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'lambda_function_vpc_config',          'aws_lambda_function.N/A',                   'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'alb_access_logs_enabled',             'aws_lb.N/A',                                'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'alb_deletion_protection',             'aws_lb.N/A',                                'SKIPPED: No matching resources found for this rule', M),
   { text: '' },
-  { segments: [
-    { text: '9 FAIL', className: F },
-    { text: '  ', className: T },
-    { text: '3 PASS', className: P },
-    { text: '  18 SKIP  |  5 resources  |  26 rules', className: T },
-  ]},
+  { segments: [{ text: 'Passed:   ', className: T }, { text: '3', className: P }] },
+  { segments: [{ text: 'Failed:   ', className: T }, { text: '9', className: F }] },
+  { text: 'Skipped:  18 (no matching resources found)', type: 'output' },
+  { text: '' },
+  { segments: [{ text: '9 check(s) failed.', className: F }] },
 ]
 
 export default function Hero() {
@@ -135,6 +170,8 @@ export default function Hero() {
               title="riveter — bash"
               lines={terminalLines}
               className="relative shadow-2xl shadow-[rgba(249,115,22,0.08)]"
+              maxHeight="420px"
+              compact
             />
           </div>
         </div>

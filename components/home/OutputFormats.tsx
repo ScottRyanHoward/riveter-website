@@ -149,7 +149,13 @@ Scanning 5 resource(s) against 26 rule(s)...
  PASS    security_group_description_required  aws_security_group.web_sg       All checks passed
  SKIP    s3_bucket_public_access_block      N/A                               SKIPPED: No matching resources found for this rule
  SKIP    s3_bucket_logging                  N/A                               SKIPPED: No matching resources found for this rule
- SKIP    rds_encrypted_storage              N/A                               SKIPPED: No matching resources found for this rule`,
+ SKIP    rds_encrypted_storage              N/A                               SKIPPED: No matching resources found for this rule
+
+Passed:   3
+Failed:   9
+Skipped:  18 (no matching resources found)
+
+9 check(s) failed.`,
     language: 'text',
   },
   {
