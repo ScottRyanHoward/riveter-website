@@ -106,18 +106,6 @@ const aiRulesTerminalLines = [
   { text: 'Rules saved to: ./riveter-generated-rules.yaml', type: 'success' as const },
 ]
 
-const scanTerminalLines = [
-  { text: 'riveter scan ./infra --pack aws-security --output table', type: 'command' as const },
-  { text: '✓  Loaded aws-security (43 rules)', type: 'success' as const },
-  { text: 'Scanning 8 .tf files...', type: 'info' as const },
-  { text: '', type: 'output' as const },
-  { text: '  [CRITICAL]  aws_s3_bucket.logs — public read access', type: 'error' as const },
-  { text: '  [HIGH]      aws_security_group.web — 0.0.0.0/0 on :22', type: 'error' as const },
-  { text: '  [HIGH]      aws_db_instance.prod — not encrypted', type: 'error' as const },
-  { text: '  [MEDIUM]    aws_iam_role.lambda — wildcard permissions', type: 'warning' as const },
-  { text: '', type: 'output' as const },
-  { text: '4 violations  |  8 files  |  43 rules checked', type: 'info' as const },
-]
 
 export default function FeaturesPage() {
   return (
@@ -133,35 +121,30 @@ export default function FeaturesPage() {
 
         {/* Core Scanning */}
         <section id="scanning">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-[var(--color-accent)]" />
-                </div>
-                <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Core Scanning</h2>
-              </div>
-              <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6">
-                Point riveter at any Terraform file or directory. It recursively finds all <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">.tf</code> files,
-                maps resources to rule violations, and produces a prioritized report.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  'Recursive directory scanning',
-                  'Severity levels: critical, high, medium, low',
-                  'Resource-level violation pinpointing with file and line numbers',
-                  'Non-zero exit code on violations — ideal for CI/CD gates',
-                  'Select one or multiple compliance packs per scan',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-severity-low)] mt-0.5 shrink-0">✓</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
+              <Shield className="w-5 h-5 text-[var(--color-accent)]" />
             </div>
-            <TerminalWindow title="riveter scan" lines={scanTerminalLines} />
+            <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Core Scanning</h2>
           </div>
+          <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6 max-w-2xl">
+            Point riveter at any Terraform file or directory. It recursively finds all <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">.tf</code> files,
+            maps resources to rule violations, and produces a prioritized report.
+          </p>
+          <ul className="space-y-3">
+            {[
+              'Recursive directory scanning',
+              'Severity levels: critical, high, medium, low',
+              'Resource-level violation pinpointing with file and line numbers',
+              'Non-zero exit code on violations — ideal for CI/CD gates',
+              'Select one or multiple compliance packs per scan',
+            ].map((item) => (
+              <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--color-text-secondary)]">
+                <span className="text-[var(--color-severity-low)] mt-0.5 shrink-0">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* Custom Rules */}
