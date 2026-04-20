@@ -124,7 +124,7 @@ const S = 'text-[var(--color-text-muted)]'
 const T = 'text-[var(--color-text-secondary)]'
 const M = 'text-[var(--color-text-muted)]'
 
-const W_STATUS = '8ch'
+const W_STATUS = '12ch'
 const W_RULE = '38ch'
 const W_RESOURCE = '40ch'
 
@@ -148,20 +148,13 @@ const tableTerminalLines: TerminalLine[] = [
   { text: '' },
   {
     columns: [
-      { text: pad(' Status', 8), className: T, width: W_STATUS },
+      { text: pad(' Status', 12), className: T, width: W_STATUS },
       { text: pad('Rule ID', 36) + '  ', className: T, width: W_RULE },
       { text: pad('Resource', 38) + '  ', className: T, width: W_RESOURCE },
       { text: 'Message', className: T, flex: true },
     ],
   },
-  {
-    columns: [
-      { text: ' ' + '─'.repeat(6) + ' ', className: T, width: W_STATUS },
-      { text: '─'.repeat(36) + '  ', className: T, width: W_RULE },
-      { text: '─'.repeat(38) + '  ', className: T, width: W_RESOURCE },
-      { text: '─'.repeat(50), className: T, flex: true },
-    ],
-  },
+  { type: 'divider' as const },
   tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.web_server',            "Expected 'associate_public_ip_address' to equal False, got True"),
   tableRow('FAIL', F, 'ec2_encrypted_ebs_volumes',           'aws_instance.web_server',            "Expected 'root_block_device.encrypted' to equal True, got None"),
   tableRow('PASS', P, 'ec2_approved_instance_types',         'aws_instance.web_server',            'All checks passed'),

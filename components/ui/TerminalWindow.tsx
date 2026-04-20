@@ -12,13 +12,14 @@ export interface TerminalColumn {
   className?: string
   width?: string  // CSS width, e.g. '8ch'
   flex?: boolean  // takes remaining space
+  wrap?: boolean  // allow text to wrap (overrides whitespace-pre)
 }
 
 export interface TerminalLine {
   text?: string
   segments?: TerminalSegment[]
   columns?: TerminalColumn[]
-  type?: 'command' | 'success' | 'error' | 'warning' | 'info' | 'output'
+  type?: 'command' | 'success' | 'error' | 'warning' | 'info' | 'output' | 'divider'
 }
 
 interface TerminalWindowProps {
@@ -60,7 +61,9 @@ export default function TerminalWindow({ title = 'terminal', lines, className, m
         )}
         style={maxHeight ? { maxHeight } : undefined}
       >
-        {lines.map((line, i) => (
+        {lines.map((line, i) => line.type === 'divider' ? (
+          <div key={i} className="border-t border-[var(--color-text-muted)] opacity-30 my-0.5" />
+        ) : (
           <div
             key={i}
             className={cn(
@@ -73,7 +76,11 @@ export default function TerminalWindow({ title = 'terminal', lines, className, m
               line.columns.map((col, j) => (
                 <span
                   key={j}
-                  className={cn('whitespace-pre shrink-0', col.className, col.flex && 'flex-1 shrink min-w-0')}
+                  className={cn(
+                    col.wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre shrink-0',
+                    col.className,
+                    col.flex && 'flex-1 shrink min-w-0',
+                  )}
                   style={!col.flex && col.width ? { width: col.width } : undefined}
                 >
                   {col.text}
