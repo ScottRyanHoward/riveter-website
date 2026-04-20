@@ -15,7 +15,7 @@ const outputFormats = [
   {
     id: 'table',
     name: 'Table',
-    use: 'Developer review during local development',
+    use: 'Default terminal output',
     badge: 'default' as const,
   },
   {
@@ -39,7 +39,7 @@ const outputFormats = [
   {
     id: 'html',
     name: 'HTML Report',
-    use: 'Stakeholder-ready interactive reports',
+    use: 'Browser-ready interactive reports',
     badge: 'default' as const,
   },
 ]
@@ -84,9 +84,11 @@ jobs:
 
       - name: Scan Terraform
         run: |
-          riveter scan ./terraform \\
-            --pack aws-security \\
-            --output sarif > results.sarif
+          riveter scan \\
+            -p aws-security \\
+            -t ./main.tf \\
+            -f sarif \\
+            -o results.sarif
 
       - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v3
@@ -117,10 +119,10 @@ export default function FeaturesPage() {
         description="From scanning to reporting to AI-powered rule creation — riveter covers the full lifecycle of infrastructure compliance."
       />
 
-      <div className="space-y-24">
+      <div className="space-y-0">
 
         {/* Core Scanning */}
-        <section id="scanning">
+        <section id="scanning" className="py-20">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -137,7 +139,7 @@ export default function FeaturesPage() {
                 {[
                   'Recursive directory scanning',
                   'Non-zero exit code on violations — ideal for CI/CD gates',
-                  'Select one or multiple compliance packs per scan',
+                  'Select one or multiple compliance packs and/or custom rule files per scan',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--color-text-secondary)]">
                     <span className="text-[var(--color-severity-low)] mt-0.5 shrink-0">✓</span>
@@ -154,25 +156,25 @@ export default function FeaturesPage() {
                 <div>
                   <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Scan a file</div>
                   <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-accent)]">$ </span>riveter scan main.tf <span className="text-[var(--color-text-muted)]">-p aws-security</span>
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -t ./main.tf</span>
                   </div>
                 </div>
                 <div>
                   <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Scan a directory</div>
                   <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">-p aws-security</span>
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -t ./infra</span>
                   </div>
                 </div>
                 <div>
                   <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Multiple packs</div>
                   <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">-p aws-security -p cis</span>
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -p cis-aws -t ./main.tf</span>
                   </div>
                 </div>
                 <div>
                   <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Choose output format</div>
                   <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-accent)]">$ </span>riveter scan ./terraform <span className="text-[var(--color-text-muted)]">--output json</span>
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -t ./main.tf -o json</span>
                   </div>
                 </div>
               </div>
@@ -181,12 +183,9 @@ export default function FeaturesPage() {
         </section>
 
         {/* Custom Rules */}
-        <section id="custom-rules">
-          <div className="grid lg:grid-cols-2 gap-10 items-start">
-            <div className="order-2 lg:order-1">
-              <CodeBlock code={customRuleCode} language="yaml" filename="custom-rules.yaml" />
-            </div>
-            <div className="order-1 lg:order-2">
+        <section id="custom-rules" className="py-20 border-t">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
                   <FileCode className="w-5 h-5 text-[var(--color-accent)]" />
@@ -214,11 +213,14 @@ export default function FeaturesPage() {
                 See more examples <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
+            <div>
+              <CodeBlock code={customRuleCode} language="yaml" filename="custom-rules.yaml" />
+            </div>
           </div>
         </section>
 
         {/* State File Scanning */}
-        <section id="state-scanning">
+        <section id="state-scanning" className="py-20 border-t">
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
@@ -233,13 +235,13 @@ export default function FeaturesPage() {
             </p>
             <div className="bg-[var(--color-surface-2)] rounded-lg border border-[var(--color-border)] p-4 font-mono text-sm">
               <span className="text-[var(--color-accent)]">$ </span>
-              <span className="text-[var(--color-text-primary)]">riveter scan-state terraform.tfstate --pack aws-security</span>
+              <span className="text-[var(--color-text-primary)]">riveter scan-state -p aws-security -s terraform.tfstate</span>
             </div>
           </div>
         </section>
 
         {/* AI Rule Generation */}
-        <section id="ai-rules">
+        <section id="ai-rules" className="py-20 border-t">
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -252,7 +254,7 @@ export default function FeaturesPage() {
                 Powered by Claude AI. Point riveter at your Terraform files and it will suggest 3–5 enforceable compliance rules per resource type based on what it finds.
               </p>
               <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6">
-                Requires an Anthropic API key set as <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">ANTHROPIC_API_KEY</code>.
+                * Requires an Anthropic API key environment variable exported as <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">ANTHROPIC_API_KEY</code>.
               </p>
               <div className="p-4 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)]">
                 <p className="text-sm text-[var(--color-accent-light)]">
@@ -265,8 +267,35 @@ export default function FeaturesPage() {
           </div>
         </section>
 
+        {/* AI Explanation of Rule Failures */}
+        <section id="ai-explanations" className="py-20 border-t">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-[var(--color-accent)]" />
+                </div>
+                <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">AI Explanation of Rule Failures</h2>
+              </div>
+              <p className="text-[var(--color-text-secondary)] leading-relaxed mb-4">
+                Placeholder text describing how riveter uses AI to explain why a rule failed and what you can do to fix it.
+              </p>
+              <p className="text-[var(--color-text-secondary)] leading-relaxed mb-6">
+                More placeholder text about the feature, its benefits, and how it integrates into the developer workflow.
+              </p>
+              <p className="text-[var(--color-text-secondary)] leading-relaxed">
+                * Requires an Anthropic API key environment variable exported as <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">ANTHROPIC_API_KEY</code>.
+              </p>
+            </div>
+            <CodeBlock
+              code={`# Placeholder code example\n# showing AI explanation output`}
+              language="text"
+            />
+          </div>
+        </section>
+
         {/* Output Formats */}
-        <section id="output-formats">
+        <section id="output-formats" className="py-20 border-t">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
               <FileOutput className="w-5 h-5 text-[var(--color-accent)]" />
@@ -274,16 +303,18 @@ export default function FeaturesPage() {
             <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Output Formats</h2>
           </div>
           <p className="text-[var(--color-text-secondary)] mb-8 max-w-2xl">
-            One flag changes everything. Use <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">--output</code> to choose the right format for your workflow.
+            One flag changes everything. Use <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">-o</code> to choose the right format for your workflow.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {outputFormats.map((fmt) => (
               <Card key={fmt.id} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-[var(--color-text-primary)]">{fmt.name}</h3>
-                  <code className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-2)] px-2 py-0.5 rounded">
-                    --output {fmt.id === 'junit' ? 'junit' : fmt.id}
-                  </code>
+                  {fmt.id !== 'table' && (
+                    <code className="text-xs font-mono text-[var(--color-accent)] bg-[var(--color-surface-2)] px-2 py-0.5 rounded">
+                      {`-o ${fmt.id === 'junit' ? 'junit' : fmt.id}`}
+                    </code>
+                  )}
                 </div>
                 <p className="text-sm text-[var(--color-text-secondary)]">{fmt.use}</p>
               </Card>
@@ -292,8 +323,8 @@ export default function FeaturesPage() {
         </section>
 
         {/* CI/CD */}
-        <section id="cicd">
-          <div className="grid lg:grid-cols-2 gap-10 items-start">
+        <section id="cicd" className="py-20 border-t">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-lg bg-[var(--color-accent-dim)] border border-[rgba(249,115,22,0.2)] flex items-center justify-center">
