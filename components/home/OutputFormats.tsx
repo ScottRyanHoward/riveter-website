@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import CodeBlock from '@/components/examples/CodeBlock'
+import TerminalWindow, { TerminalLine, TerminalColumn } from '@/components/ui/TerminalWindow'
 
 // ── HTML report preview ──────────────────────────────────────────────────────
 
@@ -115,6 +116,72 @@ function HtmlReportPreview() {
   )
 }
 
+// ── Table terminal preview ────────────────────────────────────────────────────
+
+const F = 'text-[var(--color-severity-critical)]'
+const P = 'text-[var(--color-severity-low)]'
+const S = 'text-[var(--color-text-muted)]'
+const T = 'text-[var(--color-text-secondary)]'
+const M = 'text-[var(--color-text-muted)]'
+
+const W_STATUS = '8ch'
+const W_RULE = '38ch'
+const W_RESOURCE = '40ch'
+
+const pad = (s: string, n: number) => s.padEnd(n)
+
+function tableRow(status: string, sc: string, ruleId: string, resource: string, message: string, cc = T): TerminalLine {
+  return {
+    columns: [
+      { text: ` ${status}   `, className: sc, width: W_STATUS },
+      { text: pad(ruleId, 36) + '  ', className: cc, width: W_RULE },
+      { text: pad(resource, 38) + '  ', className: cc, width: W_RESOURCE },
+      { text: message, className: cc, flex: true },
+    ] as TerminalColumn[],
+  }
+}
+
+const tableTerminalLines: TerminalLine[] = [
+  { text: 'riveter scan -p aws-security -t main.tf', type: 'command' },
+  { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' },
+  { text: 'Scanning 5 resource(s) against 26 rule(s)...', type: 'info' },
+  { text: '' },
+  {
+    columns: [
+      { text: pad(' Status', 8), className: T, width: W_STATUS },
+      { text: pad('Rule ID', 36) + '  ', className: T, width: W_RULE },
+      { text: pad('Resource', 38) + '  ', className: T, width: W_RESOURCE },
+      { text: 'Message', className: T, flex: true },
+    ],
+  },
+  {
+    columns: [
+      { text: ' ' + '─'.repeat(6) + ' ', className: T, width: W_STATUS },
+      { text: '─'.repeat(36) + '  ', className: T, width: W_RULE },
+      { text: '─'.repeat(38) + '  ', className: T, width: W_RESOURCE },
+      { text: '─'.repeat(50), className: T, flex: true },
+    ],
+  },
+  tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.web_server',            "Expected 'associate_public_ip_address' to equal False, got True"),
+  tableRow('FAIL', F, 'ec2_encrypted_ebs_volumes',           'aws_instance.web_server',            "Expected 'root_block_device.encrypted' to equal True, got None"),
+  tableRow('PASS', P, 'ec2_approved_instance_types',         'aws_instance.web_server',            'All checks passed'),
+  tableRow('PASS', P, 'ec2_required_tags',                   'aws_instance.web_server',            'All checks passed'),
+  tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.worker',                "Expected 'associate_public_ip_address' to equal False, got None"),
+  tableRow('FAIL', F, 's3_bucket_encryption',                'aws_s3_bucket.data_lake',            'server_side_encryption_configuration is missing or empty'),
+  tableRow('FAIL', F, 's3_bucket_versioning',                'aws_s3_bucket_versioning.data_lake', "Expected 'versioning_configuration.status' to equal 'Enabled', got None"),
+  tableRow('FAIL', F, 'security_group_no_wide_open_ingress', 'aws_security_group.web_sg',          "Expected subset is not contained in actual ingress rules"),
+  tableRow('PASS', P, 'security_group_description_required', 'aws_security_group.web_sg',          'All checks passed'),
+  tableRow('SKIP', S, 's3_bucket_public_access_block',       'N/A',                               'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 's3_bucket_logging',                   'N/A',                               'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_encrypted_storage',               'N/A',                               'SKIPPED: No matching resources found for this rule', M),
+  { text: '' },
+  { segments: [{ text: 'Passed:   ', className: T }, { text: '3', className: P }] },
+  { segments: [{ text: 'Failed:   ', className: T }, { text: '9', className: F }] },
+  { text: 'Skipped:  18 (no matching resources found)', type: 'output' },
+  { text: '' },
+  { segments: [{ text: '9 check(s) failed.', className: F }] },
+]
+
 // ── Format definitions ────────────────────────────────────────────────────────
 
 type Format = {
@@ -131,32 +198,6 @@ const formats: Format[] = [
     id: 'table',
     label: 'Table',
     description: 'Color-coded terminal output. FAIL in red, PASS in green, SKIP in grey — with the rule ID, resource, and message for each check.',
-    code: `$ riveter scan -p aws-security -t main.tf
-Loaded 26 rule(s) from pack aws-security
-
-Scanning 5 resource(s) against 26 rule(s)...
-
- Status  Rule ID                            Resource                          Message
- ──────  ─────────────────────────────────  ────────────────────────────────  ──────────────────────────────────────────────────
- FAIL    ec2_no_public_ip                   aws_instance.web_server           Expected 'associate_public_ip_address' to equal False, got True
- FAIL    ec2_encrypted_ebs_volumes          aws_instance.web_server           Expected 'root_block_device.encrypted' to equal True, got None
- PASS    ec2_approved_instance_types        aws_instance.web_server           All checks passed
- PASS    ec2_required_tags                  aws_instance.web_server           All checks passed
- FAIL    ec2_no_public_ip                   aws_instance.worker               Expected 'associate_public_ip_address' to equal False, got None
- FAIL    s3_bucket_encryption               aws_s3_bucket.data_lake           server_side_encryption_configuration is missing or empty
- FAIL    s3_bucket_versioning               aws_s3_bucket_versioning.data_lake  Expected 'versioning_configuration.status' to equal 'Enabled', got None
- FAIL    security_group_no_wide_open_ingress  aws_security_group.web_sg       Expected subset is not contained in actual ingress rules
- PASS    security_group_description_required  aws_security_group.web_sg       All checks passed
- SKIP    s3_bucket_public_access_block      N/A                               SKIPPED: No matching resources found for this rule
- SKIP    s3_bucket_logging                  N/A                               SKIPPED: No matching resources found for this rule
- SKIP    rds_encrypted_storage              N/A                               SKIPPED: No matching resources found for this rule
-
-Passed:   3
-Failed:   9
-Skipped:  18 (no matching resources found)
-
-9 check(s) failed.`,
-    language: 'text',
   },
   {
     id: 'html',
@@ -310,7 +351,9 @@ export default function OutputFormats() {
           <p className="text-sm text-[var(--color-text-secondary)] text-center mb-4">
             {current.description}
           </p>
-          {current.htmlPreview ? (
+          {current.id === 'table' ? (
+            <TerminalWindow title="riveter — bash" lines={tableTerminalLines} maxHeight="360px" compact />
+          ) : current.htmlPreview ? (
             <HtmlReportPreview />
           ) : (
             <CodeBlock code={current.code!} language={current.language!} />
