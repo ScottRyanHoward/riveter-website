@@ -16,7 +16,7 @@ interface TabGroupProps {
 
 export default function TabGroup({ tabs, defaultTab }: TabGroupProps) {
   const [active, setActive] = useState(defaultTab || tabs[0].id)
-  const current = tabs.find((t) => t.id === active)!
+  const current = tabs.find((t) => t.id === active) ?? tabs[0]
 
   return (
     <div>

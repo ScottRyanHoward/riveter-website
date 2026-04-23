@@ -44,30 +44,43 @@ const outputFormats = [
   },
 ]
 
-const customRuleCode = `# custom-rules.yaml
-rules:
-  - id: require-s3-versioning
-    name: S3 Bucket Must Have Versioning Enabled
-    severity: medium
-    description: All S3 buckets must have versioning enabled for data recovery
-    resource_type: aws_s3_bucket
-    conditions:
-      - field: versioning.enabled
-        operator: equals
-        value: true
+const customRuleCode = `rules:
+  - id: ec2-must-be-encrypted
+    resource_type: aws_instance
+    description: All EC2 root EBS volumes must be encrypted
+    assert:
+      root_block_device.encrypted: true
+    metadata:
+      tags: [encryption, ec2]
+      references:
+        - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html
 
-  - id: rds-deletion-protection
-    name: RDS Instance Must Have Deletion Protection
-    severity: high
-    description: Prevents accidental deletion of production databases
-    resource_type: aws_db_instance
-    conditions:
-      - field: deletion_protection
-        operator: equals
-        value: true
-      - field: backup_retention_period
-        operator: greater_than
-        value: 6`
+  - id: ec2-no-public-ip-production
+    resource_type: aws_instance
+    description: Production EC2 instances must not have a public IP
+    filter:
+      tags.Environment: production    # Only applies to production resources
+    assert:
+      associate_public_ip_address: false
+    metadata:
+      tags: [network, ec2]
+
+  - id: ec2-required-tags
+    resource_type: aws_instance
+    description: EC2 instances must have Environment, Owner, and Project tags
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+      tags.Project: present
+    metadata:
+      tags: [governance, tagging]
+
+  - id: ec2-minimum-volume-size
+    resource_type: aws_instance
+    description: EC2 root volume must be at least 20 GB
+    assert:
+      root_block_device.volume_size:
+        gte: 20`
 
 const cicdCode = `# .github/workflows/infra-validation.yml
 name: Infrastructure Validation
@@ -229,7 +242,7 @@ export default function FeaturesPage() {
                 <div>
                   <div className="text-[var(--color-text-muted)] text-xs mb-2 uppercase tracking-wide">Choose output format</div>
                   <div className="bg-[var(--color-surface-2)] rounded-lg px-4 py-3 text-[var(--color-text-secondary)]">
-                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -t ./main.tf -o json</span>
+                    <span className="text-[var(--color-accent)]">$ </span>riveter scan <span className="text-[var(--color-text-secondary)]">-p aws-security -t ./main.tf -f json</span>
                   </div>
                 </div>
               </div>
@@ -253,7 +266,7 @@ export default function FeaturesPage() {
               <ul className="space-y-3 mb-6">
                 {[
                   'Dot-notation for nested property access',
-                  'Operators: equals, not_equals, contains, matches, greater_than, less_than, exists',
+                  'Operators: equals, not equals, less than, greater than, less than or equal, greater than or equal, contains',
                   'Target specific resource types',
                   'Combine multiple conditions with AND logic',
                   'Use alongside built-in packs or standalone',
@@ -351,7 +364,7 @@ export default function FeaturesPage() {
             <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Output Formats</h2>
           </div>
           <p className="text-[var(--color-text-secondary)] mb-8 max-w-2xl">
-            One flag changes everything. Use <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">-o</code> to choose the right format for your workflow.
+            One flag changes everything. Use <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">-f</code> to choose the right format for your workflow.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {outputFormats.map((fmt) => (
@@ -360,7 +373,7 @@ export default function FeaturesPage() {
                   <h3 className="font-semibold text-[var(--color-text-primary)]">{fmt.name}</h3>
                   {fmt.id !== 'table' && (
                     <code className="text-xs font-mono text-[var(--color-accent)] bg-[var(--color-surface-2)] px-2 py-0.5 rounded">
-                      {`-o ${fmt.id === 'junit' ? 'junit' : fmt.id}`}
+                      {`-f ${fmt.id === 'junit' ? 'junit' : fmt.id}`}
                     </code>
                   )}
                 </div>

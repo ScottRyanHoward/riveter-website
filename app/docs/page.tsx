@@ -44,8 +44,7 @@ function InlineCode({ children }: { children: React.ReactNode }) {
 
 interface FlagRow {
   flag: string
-  type: string
-  defaultVal: string
+  short: string
   description: string
 }
 
@@ -55,7 +54,7 @@ function FlagsTable({ rows }: { rows: FlagRow[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-            {['Flag', 'Type', 'Default', 'Description'].map((h) => (
+            {['Flag', 'Short', 'Description'].map((h) => (
               <th key={h} className="px-4 py-2.5 text-left font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wider">
                 {h}
               </th>
@@ -66,8 +65,7 @@ function FlagsTable({ rows }: { rows: FlagRow[] }) {
           {rows.map((row, i) => (
             <tr key={i} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-2)] transition-colors">
               <td className="px-4 py-3 font-mono text-xs text-[var(--color-accent-light)] whitespace-nowrap">{row.flag}</td>
-              <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">{row.type}</td>
-              <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">{row.defaultVal}</td>
+              <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-muted)] whitespace-nowrap">{row.short}</td>
               <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.description}</td>
             </tr>
           ))}
@@ -109,35 +107,50 @@ export default function DocsPage() {
 
           <Section id="installation">
             <H2>Installation</H2>
-            <P>The recommended installation method is Homebrew.</P>
+            <H3>macOS / Linux</H3>
             <CodeBlock
               code="brew install ScottRyanHoward/riveter/riveter"
               language="bash"
               filename="Terminal"
             />
+            <H3>Windows</H3>
+            <P>
+              Download the latest <InlineCode>riveter-&lt;version&gt;-windows-x86_64.zip</InlineCode> from the Releases page,
+              extract <InlineCode>riveter.exe</InlineCode>, and add it to your <InlineCode>PATH</InlineCode>.
+              Then place rule pack YAML files in <InlineCode>%USERPROFILE%\.riveter\rule_packs\</InlineCode>.
+            </P>
             <H3>Verify installation</H3>
             <CodeBlock code="riveter --version" language="bash" />
-            <H3>Optional: AI rule generation</H3>
+            <H3>Optional: AI features</H3>
             <P>
-              To use <InlineCode>riveter generate-rules</InlineCode>, set your Anthropic API key:
+              To use <InlineCode>riveter generate-rules</InlineCode> or <InlineCode>--explain</InlineCode>, set your Anthropic API key:
             </P>
-            <CodeBlock code="export ANTHROPIC_API_KEY=your_api_key_here" language="bash" />
+            <CodeBlock code="export ANTHROPIC_API_KEY=sk-ant-..." language="bash" />
           </Section>
 
           <Section id="quick-start">
             <H2>Quick Start</H2>
-            <P>Get up and running in under two minutes.</P>
-            <H3>Step 1: Navigate to your Terraform directory</H3>
-            <CodeBlock code="cd ./my-infra" language="bash" />
-            <H3>Step 2: Run a scan</H3>
-            <CodeBlock code="riveter scan . --pack aws-security" language="bash" />
-            <H3>Step 3: Review violations</H3>
-            <P>
-              Violations are displayed as a table by default, organized by severity.
-              Fix the issues in your Terraform code, then re-run to confirm.
-            </P>
-            <H3>Step 4: Export for CI/CD</H3>
-            <CodeBlock code="riveter scan . --pack aws-security --output sarif > results.sarif" language="bash" />
+            <CodeBlock code={`# Scan with a built-in rule pack
+riveter scan -p aws-security -t main.tf
+
+# Scan an entire directory
+riveter scan -p aws-security -t ./infra/
+
+# Combine multiple packs
+riveter scan -p aws-security -p cis-aws -t main.tf
+
+# Save an HTML report and still see results in the terminal
+riveter scan -p aws-security -t main.tf -f html -o report.html
+
+# Validate deployed state (drift detection)
+riveter scan-state -p aws-security -s terraform.tfstate
+
+# Generate rules using AI
+riveter generate-rules -t ./infra/ -o my-rules.yml
+riveter scan -r my-rules.yml -t ./infra/
+
+# See available rule packs
+riveter list-rule-packs`} language="bash" />
           </Section>
 
           <RivetDivider />
@@ -152,7 +165,7 @@ export default function DocsPage() {
               <li>Recursively finds all <InlineCode>.tf</InlineCode> files in the target path</li>
               <li>Parses each file to extract resource blocks and their properties</li>
               <li>Loads the specified rule pack(s) or custom rule files</li>
-              <li>Evaluates each resource against each rule&apos;s conditions</li>
+              <li>Evaluates each resource against each rule&apos;s assertions</li>
               <li>Produces a report in the requested output format</li>
               <li>Exits with code <InlineCode>0</InlineCode> if no violations, <InlineCode>1</InlineCode> if violations found</li>
             </ol>
@@ -163,46 +176,99 @@ export default function DocsPage() {
             <P>Rules are defined in YAML with the following fields:</P>
             <CodeBlock
               code={`rules:
-  - id: unique-rule-id          # Required: unique identifier
-    name: Human Readable Name   # Required: display name
-    severity: high              # Required: critical|high|medium|low
-    description: >              # Required: what the rule checks
-      Explanation of what this rule enforces and why.
-    resource_type: aws_s3_bucket # Required: Terraform resource type
-    conditions:                  # Required: one or more conditions
-      - field: versioning.enabled  # Dot notation for nested fields
-        operator: equals           # See operators below
-        value: true`}
+  - id: ec2-must-be-encrypted        # Required: unique identifier
+    resource_type: aws_instance       # Required: Terraform resource type
+    description: >                    # Optional: human-readable summary
+      All EC2 root volumes must be encrypted.
+    assert:                           # Required: assertions that must all be true
+      root_block_device.encrypted: true
+
+  - id: ec2-prod-approved-types
+    resource_type: aws_instance
+    description: Production EC2s must use approved instance types
+    filter:                           # Optional: only apply to matching resources
+      tags.Environment: production
+    assert:
+      instance_type:
+        regex: "^(t3|m5|c5)\\.(large|xlarge|2xlarge)$"
+
+  - id: s3-versioning-enabled
+    resource_type: aws_s3_bucket
+    description: S3 buckets must have versioning enabled
+    assert:
+      versioning.enabled: true
+      tags.Owner: present`}
               language="yaml"
             />
-            <H3>Supported Operators</H3>
+
+            <H3>Rule Fields</H3>
             <div className="overflow-x-auto rounded-lg border border-[var(--color-border)] mb-4">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-2)]">
-                    <th className="px-4 py-2.5 text-left font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Operator</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Description</th>
+                    {['Field', 'Required', 'Description'].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left font-medium text-[var(--color-text-muted)] text-xs uppercase tracking-wider">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ['equals', 'Field value must equal the specified value'],
-                    ['not_equals', 'Field value must not equal the specified value'],
-                    ['contains', 'Field value (string/list) must contain the specified value'],
-                    ['not_contains', 'Field value must not contain the specified value'],
-                    ['matches', 'Field value must match the specified regex pattern'],
-                    ['exists', 'Field must be present and non-null (value: true/false)'],
-                    ['greater_than', 'Numeric field must be greater than the specified value'],
-                    ['less_than', 'Numeric field must be less than the specified value'],
-                  ].map(([op, desc]) => (
-                    <tr key={op} className="border-b border-[var(--color-border)] last:border-0">
-                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-accent-light)]">{op}</td>
+                    ['id', 'Yes', 'Unique rule identifier'],
+                    ['resource_type', 'Yes', 'Terraform resource type, or "*" for all'],
+                    ['assert', 'Yes', 'Assertions that must all be true'],
+                    ['description', 'No', 'Human-readable summary'],
+                    ['filter', 'No', 'Conditions a resource must match for the rule to apply'],
+                    ['metadata', 'No', 'Extra metadata (tags, references, etc.)'],
+                  ].map(([field, req, desc]) => (
+                    <tr key={field} className="border-b border-[var(--color-border)] last:border-0">
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-accent-light)]">{field}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-muted)]">{req}</td>
                       <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{desc}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            <H3>Assertion Operators</H3>
+            <P>
+              By default, <InlineCode>property: value</InlineCode> is an equality check. Use operator syntax for richer comparisons:
+            </P>
+            <CodeBlock
+              code={`assert:
+  # Equality (default)
+  instance_type: t3.large
+  associate_public_ip_address: false
+
+  # Presence check
+  tags.Owner: present
+
+  # Regex match
+  instance_type:
+    regex: "^(t3|m5)\\.(large|xlarge)$"
+
+  # Numeric comparisons: gt, gte, lt, lte, ne, eq
+  root_block_device.volume_size:
+    gte: 100
+
+  # List operations
+  allowed_cidrs:
+    contains: "10.0.0.0/8"
+  ingress_rules:
+    length:
+      lte: 5`}
+              language="yaml"
+            />
+
+            <H3>Filters</H3>
+            <P>
+              Filters restrict which resources a rule applies to. A rule is only evaluated for resources where all filter conditions match:
+            </P>
+            <CodeBlock
+              code={`filter:
+  tags.Environment: production`}
+              language="yaml"
+            />
           </Section>
 
           <Section id="compliance-packs">
@@ -214,8 +280,8 @@ export default function DocsPage() {
             <P>
               Use one or more packs in a scan:
             </P>
-            <CodeBlock code={`riveter scan . --pack aws-security
-riveter scan . --pack aws-security --pack aws-cis`} language="bash" />
+            <CodeBlock code={`riveter scan -p aws-security -t main.tf
+riveter scan -p aws-security -p cis-aws -t main.tf`} language="bash" />
           </Section>
 
           <Section id="severity-levels">
@@ -243,66 +309,86 @@ riveter scan . --pack aws-security --pack aws-cis`} language="bash" />
           <Section id="scan">
             <H2>riveter scan</H2>
             <P>Scan Terraform files or directories against compliance rules.</P>
-            <CodeBlock code="riveter scan [PATH] [FLAGS]" language="bash" />
+            <CodeBlock code="riveter scan [FLAGS]" language="bash" />
             <FlagsTable rows={[
-              { flag: '--pack, -p', type: 'string', defaultVal: '—', description: 'Compliance pack to use. Can be specified multiple times.' },
-              { flag: '--rules, -r', type: 'string', defaultVal: '—', description: 'Path to a custom rules YAML file. Can be specified multiple times.' },
-              { flag: '--output, -o', type: 'string', defaultVal: 'table', description: 'Output format: table | json | sarif | junit | html' },
-              { flag: '--severity', type: 'string', defaultVal: 'low', description: 'Minimum severity to report: critical | high | medium | low' },
-              { flag: '--ignore-rule', type: 'string', defaultVal: '—', description: 'Rule ID to skip. Can be specified multiple times.' },
-              { flag: '--config', type: 'string', defaultVal: 'riveter.yaml', description: 'Path to riveter config file.' },
+              { flag: '--terraform PATH', short: '-t', description: 'Required. Path to a .tf file or directory.' },
+              { flag: '--rule-pack NAME', short: '-p', description: 'Built-in rule pack to use. Repeatable.' },
+              { flag: '--rules FILE', short: '-r', description: 'Path to a custom rules YAML file.' },
+              { flag: '--output-format FMT', short: '-f', description: 'Output format: table (default), json, junit, sarif, html' },
+              { flag: '--output FILE', short: '-o', description: 'Write output to a file; table summary still shown in terminal.' },
+              { flag: '--explain', short: '-e', description: 'Attach AI-generated explanations to violations (requires ANTHROPIC_API_KEY).' },
+              { flag: '--include-rules PATTERN', short: '', description: 'Only run rules matching glob pattern. Repeatable.' },
+              { flag: '--exclude-rules PATTERN', short: '', description: 'Skip rules matching glob pattern. Repeatable.' },
+              { flag: '--config FILE', short: '-c', description: 'Config file path (auto-detected if omitted).' },
+              { flag: '--debug', short: '', description: 'Enable debug logging.' },
             ]} />
             <H3>Examples</H3>
-            <CodeBlock code={`# Scan current directory with AWS security pack
-riveter scan . --pack aws-security
+            <CodeBlock code={`# Scan with a built-in pack
+riveter scan -p aws-security -t main.tf
 
-# Scan with multiple packs and output SARIF
-riveter scan ./terraform --pack aws-security --pack aws-cis --output sarif
+# Scan a directory with multiple packs
+riveter scan -p aws-security -p cis-aws -t ./terraform/
 
-# Use custom rules, only show critical and high
-riveter scan . --rules ./team-rules.yaml --severity high
+# Output SARIF and write to file
+riveter scan -p aws-security -t main.tf -f sarif -o results.sarif
+
+# Use custom rules with AI explanations
+riveter scan -r ./team-rules.yaml -t main.tf --explain
 
 # Combine pack and custom rules, output JSON
-riveter scan . --pack aws-security --rules ./extras.yaml --output json`} language="bash" />
+riveter scan -p aws-security -r ./extras.yaml -t main.tf -f json`} language="bash" />
           </Section>
 
           <Section id="scan-state">
             <H2>riveter scan-state</H2>
-            <P>Scan a deployed Terraform state file (v4 format) for compliance violations.</P>
-            <CodeBlock code="riveter scan-state [STATE_FILE] [FLAGS]" language="bash" />
+            <P>Scan a deployed Terraform state file (v4 format) for compliance violations and drift detection.</P>
+            <CodeBlock code="riveter scan-state [FLAGS]" language="bash" />
             <FlagsTable rows={[
-              { flag: '--pack, -p', type: 'string', defaultVal: '—', description: 'Compliance pack to use.' },
-              { flag: '--rules, -r', type: 'string', defaultVal: '—', description: 'Path to custom rules YAML file.' },
-              { flag: '--output, -o', type: 'string', defaultVal: 'table', description: 'Output format: table | json | sarif | junit | html' },
+              { flag: '--state PATH', short: '-s', description: 'Required. Path to terraform.tfstate, or - for stdin.' },
+              { flag: '--rule-pack NAME', short: '-p', description: 'Built-in rule pack to use. Repeatable.' },
+              { flag: '--rules FILE', short: '-r', description: 'Path to custom rules YAML file.' },
+              { flag: '--output-format FMT', short: '-f', description: 'Output format: table (default), json, junit, sarif, html' },
+              { flag: '--output FILE', short: '-o', description: 'Write output to a file; table summary still shown in terminal.' },
+              { flag: '--include-rules PATTERN', short: '', description: 'Only run rules matching glob pattern. Repeatable.' },
+              { flag: '--exclude-rules PATTERN', short: '', description: 'Skip rules matching glob pattern. Repeatable.' },
+              { flag: '--config FILE', short: '-c', description: 'Config file path (auto-detected if omitted).' },
             ]} />
             <H3>Examples</H3>
             <CodeBlock code={`# Scan a local state file
-riveter scan-state terraform.tfstate --pack aws-security
+riveter scan-state -p aws-security -s terraform.tfstate
 
-# Scan remote state (download first)
-terraform state pull > current.tfstate
-riveter scan-state current.tfstate --pack aws-security`} language="bash" />
+# Pipe remote state from any Terraform backend
+terraform state pull | riveter scan-state -p aws-security -s -`} language="bash" />
           </Section>
 
           <Section id="generate-rules">
             <H2>riveter generate-rules</H2>
-            <P>Use Claude AI to generate YAML rules based on resource types in your Terraform files.</P>
-            <CodeBlock code="riveter generate-rules [PATH] [FLAGS]" language="bash" />
+            <P>
+              Use Claude AI to generate YAML rules based on resource types in your Terraform files.
+              Requires <InlineCode>ANTHROPIC_API_KEY</InlineCode>.
+            </P>
+            <CodeBlock code="riveter generate-rules [FLAGS]" language="bash" />
             <FlagsTable rows={[
-              { flag: '--output, -o', type: 'string', defaultVal: 'stdout', description: 'Output file path for generated rules.' },
-              { flag: '--api-key', type: 'string', defaultVal: 'ANTHROPIC_API_KEY', description: 'Anthropic API key (or set via environment variable).' },
+              { flag: '--terraform PATH', short: '-t', description: 'Required. Path to a .tf file or directory.' },
+              { flag: '--output FILE', short: '-o', description: 'Write generated rules to a file (default: stdout).' },
+              { flag: '--focus TEXT', short: '', description: 'Guide the AI, e.g. "PCI-DSS compliance" or "cost optimization".' },
+              { flag: '--model MODEL', short: '', description: 'Override the Claude model used for generation.' },
             ]} />
             <H3>Examples</H3>
-            <CodeBlock code={`# Generate rules from a single file
-riveter generate-rules ./terraform/main.tf
+            <CodeBlock code={`# Generate rules and print to stdout
+riveter generate-rules -t ./infra/
 
-# Generate and save to file
-riveter generate-rules ./terraform --output ./my-generated-rules.yaml`} language="bash" />
+# Save to a file and scan immediately
+riveter generate-rules -t ./infra/ -o my-rules.yml
+riveter scan -r my-rules.yml -t ./infra/
+
+# Focus on a specific compliance framework
+riveter generate-rules -t main.tf --focus "PCI-DSS compliance" -o pci-rules.yml`} language="bash" />
           </Section>
 
           <Section id="list-rule-packs">
             <H2>riveter list-rule-packs</H2>
-            <P>List all available built-in compliance packs with their rule counts.</P>
+            <P>List all available built-in compliance packs with their rule counts and descriptions.</P>
             <CodeBlock code="riveter list-rule-packs" language="bash" />
           </Section>
 
@@ -312,48 +398,42 @@ riveter generate-rules ./terraform --output ./my-generated-rules.yaml`} language
           <Section id="config-file">
             <H2>Config File</H2>
             <P>
-              Create a <InlineCode>riveter.yaml</InlineCode> in your project root to set defaults:
+              Create a <InlineCode>riveter.yml</InlineCode> (or <InlineCode>.riveter.yml</InlineCode>) in your project root to set defaults.
+              CLI flags always override config file values.
             </P>
             <CodeBlock
-              code={`# riveter.yaml
-scan:
-  packs:
-    - aws-security
-    - aws-cis
-  output: table
-  severity: medium
-  ignore_rules:
-    - iam-no-admin-policy  # we handle this separately
+              code={`rule_packs:
+  - aws-security
+  - cis-aws
 
-rules:
-  paths:
-    - ./compliance/custom-rules.yaml`}
+rule_dirs:
+  - ./my-custom-rules   # load rule packs from additional local directories
+
+output_format: table
+output_file: report.html  # optional — same as passing -o report.html
+
+include_rules:
+  - "*encryption*"
+
+exclude_rules:
+  - "*test*"
+
+ai:
+  explain_on_fail: true
+  model: claude-sonnet-4-20250514        # model for --explain
+  generate_model: claude-sonnet-4-20250514  # model for generate-rules`}
               language="yaml"
-              filename="riveter.yaml"
+              filename="riveter.yml"
             />
           </Section>
 
           <Section id="custom-rules">
             <H2>Custom Rules</H2>
             <P>
-              Write rules in YAML and use them with <InlineCode>--rules</InlineCode>. See the{' '}
+              Write rules in YAML and pass them with <InlineCode>-r</InlineCode>. See the{' '}
               <a href="#rule-structure" className="text-[var(--color-accent)] hover:text-[var(--color-accent-light)]">Rule Structure</a> section for full syntax.
             </P>
-            <CodeBlock code="riveter scan . --rules ./my-rules.yaml" language="bash" />
-          </Section>
-
-          <Section id="ignoring-rules">
-            <H2>Ignoring Rules</H2>
-            <P>Skip specific rules using <InlineCode>--ignore-rule</InlineCode> or the config file:</P>
-            <CodeBlock code={`# CLI flag (can be repeated)
-riveter scan . --pack aws-security --ignore-rule iam-no-admin-policy
-
-# Config file
-# riveter.yaml
-scan:
-  ignore_rules:
-    - iam-no-admin-policy
-    - s3-logging-enabled`} language="bash" />
+            <CodeBlock code="riveter scan -r ./my-rules.yaml -t main.tf" language="bash" />
           </Section>
 
           <RivetDivider />
@@ -362,13 +442,13 @@ scan:
           <Section id="table-output">
             <H2>Table Output</H2>
             <P>Default format. Human-readable, color-coded by severity. Best for local development review.</P>
-            <CodeBlock code="riveter scan . --pack aws-security --output table" language="bash" />
+            <CodeBlock code="riveter scan -p aws-security -t main.tf" language="bash" />
           </Section>
 
           <Section id="json-output">
             <H2>JSON Output</H2>
             <P>Machine-readable JSON for programmatic processing, custom dashboards, or downstream tooling.</P>
-            <CodeBlock code="riveter scan . --pack aws-security --output json > report.json" language="bash" />
+            <CodeBlock code="riveter scan -p aws-security -t main.tf -f json > results.json" language="bash" />
           </Section>
 
           <Section id="sarif-output">
@@ -377,19 +457,23 @@ scan:
               SARIF (Static Analysis Results Interchange Format) is compatible with GitHub Advanced Security.
               Violations appear as inline annotations in pull requests.
             </P>
-            <CodeBlock code="riveter scan . --pack aws-security --output sarif > results.sarif" language="bash" />
+            <CodeBlock code="riveter scan -p aws-security -t main.tf -f sarif -o results.sarif" language="bash" />
           </Section>
 
           <Section id="junit-output">
             <H2>JUnit XML Output</H2>
             <P>Violations are represented as test failures. Compatible with most CI/CD test reporting systems.</P>
-            <CodeBlock code="riveter scan . --pack aws-security --output junit > junit-results.xml" language="bash" />
+            <CodeBlock code="riveter scan -p aws-security -t main.tf -f junit > results.xml" language="bash" />
           </Section>
 
           <Section id="html-output">
             <H2>HTML Report</H2>
-            <P>Interactive HTML report with filtering and expandable violation details. Suitable for stakeholder review.</P>
-            <CodeBlock code="riveter scan . --pack aws-security --output html > report.html" language="bash" />
+            <P>
+              Interactive HTML report with filtering and expandable violation details. Suitable for stakeholder review.
+              Use <InlineCode>-o</InlineCode> to write the file while keeping the table summary visible in your terminal.
+            </P>
+            <CodeBlock code={`# Write to file and keep table summary in terminal
+riveter scan -p aws-security -t main.tf -f html -o report.html`} language="bash" />
           </Section>
 
           <RivetDivider />
@@ -397,30 +481,18 @@ scan:
           {/* ── Integrations ── */}
           <Section id="github-actions">
             <H2>GitHub Actions</H2>
-            <P>Block PRs that introduce compliance violations. Use SARIF output for inline annotations.</P>
+            <P>Block PRs that introduce compliance violations. Use JUnit output for test result reporting.</P>
             <CodeBlock
-              code={`name: Infrastructure Validation
-on:
-  pull_request:
-    paths: ['terraform/**']
+              code={`- name: Scan Terraform with Riveter
+  run: |
+    brew install ScottRyanHoward/riveter/riveter
+    riveter scan -p aws-security -t main.tf -f junit > riveter-results.xml
 
-jobs:
-  riveter:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install riveter
-        run: brew install ScottRyanHoward/riveter/riveter
-      - name: Scan Terraform
-        run: riveter scan ./terraform --pack aws-security --output sarif > results.sarif
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: results.sarif`}
+- name: Publish test results
+  uses: mikepenz/action-junit-report@v4
+  with:
+    report_paths: riveter-results.xml
+  if: always()`}
               language="yaml"
               filename=".github/workflows/infra-validation.yml"
             />
@@ -434,7 +506,7 @@ jobs:
   stage: validate
   script:
     - brew install ScottRyanHoward/riveter/riveter
-    - riveter scan ./terraform --pack aws-security --output junit > report.xml
+    - riveter scan -p aws-security -t ./terraform -f junit -o report.xml
   artifacts:
     when: always
     reports:
@@ -448,14 +520,13 @@ jobs:
             <H2>Pre-commit Hooks</H2>
             <P>Run riveter locally before every commit using pre-commit:</P>
             <CodeBlock
-              code={`# .pre-commit-config.yaml
-repos:
+              code={`repos:
   - repo: local
     hooks:
       - id: riveter
         name: riveter infrastructure validation
         entry: riveter scan
-        args: ['--pack', 'aws-security', '--severity', 'high']
+        args: ['-p', 'aws-security']
         language: system
         files: \\.tf$`}
               language="yaml"

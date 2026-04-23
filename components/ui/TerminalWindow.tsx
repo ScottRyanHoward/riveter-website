@@ -40,6 +40,7 @@ const lineColors: Record<string, string> = {
 }
 
 export default function TerminalWindow({ title = 'terminal', lines, className, maxHeight, compact }: TerminalWindowProps) {
+  const hasWrapColumns = lines.some(line => line.columns?.some(col => col.wrap))
   return (
     <div className={cn('rounded-lg overflow-hidden border border-[var(--color-border)] shadow-xl', className)}>
       {/* Header */}
@@ -55,14 +56,17 @@ export default function TerminalWindow({ title = 'terminal', lines, className, m
       {/* Body */}
       <div
         className={cn(
-          'bg-[var(--color-surface)] p-4 font-mono space-y-0.5 min-h-[120px] overflow-x-auto',
+          'bg-[var(--color-surface)] p-4 font-mono min-h-[120px] overflow-x-auto',
           compact ? 'text-xs' : 'text-sm',
           maxHeight && 'overflow-y-auto',
         )}
         style={maxHeight ? { maxHeight } : undefined}
       >
+        <div className={cn(hasWrapColumns ? '' : 'min-w-max', 'space-y-0.5')}>
         {lines.map((line, i) => line.type === 'divider' ? (
-          <div key={i} className="border-t border-[var(--color-text-muted)] opacity-30 my-0.5" />
+          <div key={i} className="flex my-0.5">
+            <div className="flex-1" style={{ borderTop: '1px solid rgba(244,244,245,0.6)' }} />
+          </div>
         ) : (
           <div
             key={i}
@@ -103,6 +107,7 @@ export default function TerminalWindow({ title = 'terminal', lines, className, m
         <div className="flex items-center gap-1 mt-2">
           <span className="text-[var(--color-accent)]">$</span>
           <span className="w-2 h-4 bg-[var(--color-accent)] opacity-70 animate-[blink_1s_step-end_infinite]" />
+        </div>
         </div>
       </div>
     </div>

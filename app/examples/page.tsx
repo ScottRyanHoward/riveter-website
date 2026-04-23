@@ -1,7 +1,7 @@
 import PageHeader from '@/components/layout/PageHeader'
 import TabGroup from '@/components/examples/TabGroup'
 import CodeBlock from '@/components/examples/CodeBlock'
-import TerminalWindow, { TerminalLine } from '@/components/ui/TerminalWindow'
+import TerminalWindow, { TerminalLine, TerminalColumn } from '@/components/ui/TerminalWindow'
 
 export const metadata = {
   title: 'Examples — riveter',
@@ -49,102 +49,133 @@ const S = 'text-[var(--color-text-muted)]'
 const T = 'text-[var(--color-text-secondary)]'
 const M = 'text-[var(--color-text-muted)]'
 
+const WS = '12ch'
+const WR = '38ch'
+const WRE = '40ch'
+const pad = (s: string, n: number) => s.padEnd(n)
+
+function tableRow(status: string, sc: string, ruleId: string, resource: string, message: string, cc = T): TerminalLine {
+  return {
+    columns: [
+      { text: ` ${status}   `, className: sc, width: WS },
+      { text: pad(ruleId, 36) + '  ', className: cc, width: WR },
+      { text: pad(resource, 38) + '  ', className: cc, width: WRE },
+      { text: message, className: cc, flex: true },
+    ] as TerminalColumn[],
+  }
+}
+
 const basicScanOutput: TerminalLine[] = [
   { text: 'riveter scan -p aws-security -t main.tf', type: 'command' },
   { text: 'Loaded 26 rule(s) from pack aws-security', type: 'success' },
   { text: 'Scanning 3 resource(s) against 26 rule(s)...', type: 'info' },
   { text: '' },
-  { text: ' Status  Rule ID                             Resource                          Message', type: 'output' },
-  { text: ' ──────  ──────────────────────────────────  ────────────────────────────────  ─────────────────────────────────────────────────────', type: 'output' },
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: "    ec2_no_public_ip                    aws_instance.web_server           Expected 'associate_public_ip_address' to equal False, got True", className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: "    ec2_encrypted_ebs_volumes           aws_instance.web_server           Expected 'root_block_device.encrypted' to equal True, got None", className: T },
-  ]},
-  { segments: [
-    { text: ' PASS', className: P },
-    { text: '    ec2_approved_instance_types         aws_instance.web_server           All checks passed', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    ec2_required_tags                   aws_instance.web_server           Failed checks: tags.Owner, tags.Project', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    s3_bucket_encryption                aws_s3_bucket.data_lake           server_side_encryption_configuration is missing or empty', className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: "    s3_bucket_versioning                aws_s3_bucket_versioning.data_lake  Expected 'versioning_configuration.status' to equal 'Enabled', got None", className: T },
-  ]},
-  { segments: [
-    { text: ' FAIL', className: F },
-    { text: '    security_group_no_wide_open_ingress  aws_security_group.web_sg         Expected subset is not contained in actual ingress rules', className: T },
-  ]},
-  { segments: [
-    { text: ' PASS', className: P },
-    { text: '    security_group_description_required  aws_security_group.web_sg         All checks passed', className: T },
-  ]},
-  { segments: [
-    { text: ' SKIP', className: S },
-    { text: '    s3_bucket_public_access_block       N/A                               SKIPPED: No matching resources found for this rule', className: M },
-  ]},
-  { segments: [
-    { text: ' SKIP', className: S },
-    { text: '    rds_encrypted_storage              N/A                               SKIPPED: No matching resources found for this rule', className: M },
-  ]},
+  {
+    columns: [
+      { text: pad(' Status', 12), className: T, width: WS },
+      { text: pad('Rule ID', 36) + '  ', className: T, width: WR },
+      { text: pad('Resource', 38) + '  ', className: T, width: WRE },
+      { text: 'Message', className: T, flex: true },
+    ] as TerminalColumn[],
+  },
+  { type: 'divider' },
+  tableRow('FAIL', F, 'ec2_no_public_ip',                    'aws_instance.web_server',           "Expected 'associate_public_ip_address' to equal False, got True"),
+  tableRow('FAIL', F, 'ec2_encrypted_ebs_volumes',           'aws_instance.web_server',           "Expected 'root_block_device.encrypted' to equal True, got None"),
+  tableRow('PASS', P, 'ec2_approved_instance_types',         'aws_instance.web_server',           'All checks passed'),
+  tableRow('FAIL', F, 'ec2_required_tags',                   'aws_instance.web_server',           'Failed checks: tags.Owner, tags.Project'),
+  tableRow('FAIL', F, 's3_bucket_encryption',                'aws_s3_bucket.data_lake',           'server_side_encryption_configuration is missing or empty'),
+  tableRow('FAIL', F, 's3_bucket_versioning',                'aws_s3_bucket_versioning.data_lake',"Expected 'versioning_configuration.status' to equal 'Enabled', got None"),
+  tableRow('FAIL', F, 'security_group_no_wide_open_ingress', 'aws_security_group.web_sg',         'Expected subset is not contained in actual ingress rules'),
+  tableRow('PASS', P, 'security_group_description_required', 'aws_security_group.web_sg',         'All checks passed'),
+  tableRow('SKIP', S, 's3_bucket_public_access_block',       'N/A',                               'SKIPPED: No matching resources found for this rule', M),
+  tableRow('SKIP', S, 'rds_encrypted_storage',               'N/A',                               'SKIPPED: No matching resources found for this rule', M),
   { text: '' },
-  { segments: [
-    { text: 'Passed:   ', className: T },
-    { text: '2', className: P },
-  ]},
-  { segments: [
-    { text: 'Failed:   ', className: T },
-    { text: '6', className: F },
-  ]},
+  { segments: [{ text: 'Passed:   ', className: T }, { text: '2', className: P }] },
+  { segments: [{ text: 'Failed:   ', className: T }, { text: '6', className: F }] },
   { text: 'Skipped:  18 (no matching resources found)', type: 'output' },
   { text: '' },
-  { segments: [
-    { text: '6 check(s) failed.', className: F },
-  ]},
+  { segments: [{ text: '6 check(s) failed.', className: F }] },
 ]
 
-const customRulesYaml = `# team-rules.yaml
-rules:
-  - id: require-s3-versioning
-    name: S3 Bucket Must Have Versioning Enabled
-    severity: medium
-    description: >
-      All S3 buckets must have versioning enabled to support
-      data recovery and compliance audit trails.
-    resource_type: aws_s3_bucket
-    conditions:
-      - field: versioning.enabled
-        operator: equals
-        value: true
+const customRulesYaml = `rules:
+  # -----------------------------------------------------------------------
+  # EC2 Rules
+  # -----------------------------------------------------------------------
 
-  - id: require-rds-backup
-    name: RDS Must Have Sufficient Backup Retention
-    severity: high
-    description: RDS instances must retain backups for at least 7 days.
-    resource_type: aws_db_instance
-    conditions:
-      - field: backup_retention_period
-        operator: greater_than
-        value: 6
-
-  - id: no-ec2-public-ip
-    name: EC2 Instances Must Not Have Public IPs
-    severity: high
-    description: EC2 instances in production must use private addressing only.
+  - id: ec2-must-be-encrypted
     resource_type: aws_instance
-    conditions:
-      - field: associate_public_ip_address
-        operator: equals
-        value: false`
+    description: All EC2 root EBS volumes must be encrypted
+    assert:
+      root_block_device.encrypted: true
+    metadata:
+      tags: [encryption, ec2]
+      references:
+        - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html
+
+  - id: ec2-no-public-ip-production
+    resource_type: aws_instance
+    description: Production EC2 instances must not have a public IP
+    filter:
+      tags.Environment: production    # Only applies to production resources
+    assert:
+      associate_public_ip_address: false
+    metadata:
+      tags: [network, ec2]
+
+  - id: ec2-approved-instance-types
+    resource_type: aws_instance
+    description: EC2 instances must use cost-approved instance types
+    assert:
+      instance_type:
+        regex: "^(t3|t4g|m5|m6i|c5|c6i|r5|r6i)\\\\.(micro|small|medium|large|xlarge|2xlarge)$"
+    metadata:
+      tags: [cost, ec2]
+
+  - id: ec2-required-tags
+    resource_type: aws_instance
+    description: EC2 instances must have Environment, Owner, and Project tags
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+      tags.Project: present
+    metadata:
+      tags: [governance, tagging]
+
+  - id: ec2-minimum-volume-size
+    resource_type: aws_instance
+    description: EC2 root volume must be at least 20 GB
+    assert:
+      root_block_device.volume_size:
+        gte: 20
+
+  # -----------------------------------------------------------------------
+  # S3 Rules
+  # -----------------------------------------------------------------------
+
+  - id: s3-bucket-tagged
+    resource_type: aws_s3_bucket
+    description: S3 buckets must have required tags
+    assert:
+      tags.Environment: present
+      tags.Owner: present
+    metadata:
+      tags: [governance, s3]
+
+  # -----------------------------------------------------------------------
+  # Security Group Rules
+  # -----------------------------------------------------------------------
+
+  - id: sg-no-ssh-from-internet
+    resource_type: aws_security_group
+    description: Security groups must not allow SSH (port 22) from 0.0.0.0/0
+    assert:
+      ingress:
+        length:
+          lte: 2    # Max 2 inbound rules (adjust to your needs)
+    metadata:
+      tags: [network, security-groups]
+      references:
+        - https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html`
 
 const customRulesUsage = `# Use custom rules standalone
 riveter scan -r ./team-rules.yaml -t ./main.tf
@@ -186,7 +217,7 @@ jobs:
           riveter scan -p aws-security \\
             -p aws-cis \\
             -t ./terraform \\
-            --output sarif > results.sarif
+            -f sarif -o results.sarif
 
       - name: Upload SARIF to GitHub
         uses: github/codeql-action/upload-sarif@v3
@@ -199,7 +230,7 @@ jobs:
         run: |
           riveter scan -p aws-security \\
             -t ./terraform \\
-            --output junit > junit-results.xml
+            -f junit -o junit-results.xml
 
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v2
@@ -221,64 +252,253 @@ riveter:
   script:
     - riveter scan -p aws-security
         -t ./terraform
-        --output junit > report.xml
+        -f junit -o report.xml
   artifacts:
     when: always
     reports:
       junit: report.xml`
 
 const aiRulesTerminal = [
-  { text: 'riveter generate-rules ./terraform/rds.tf', type: 'command' as const },
-  { text: 'Analyzing Terraform resources...', type: 'info' as const },
-  { text: 'Found: aws_db_instance (3 resources)', type: 'output' as const },
+  { text: 'riveter generate-rules -t main.tf', type: 'command' as const },
+  { text: 'Generating rules for 4 resource type(s) across 5 resource(s)...', type: 'info' as const },
   { text: '', type: 'output' as const },
-  { text: 'Calling Claude AI...', type: 'info' as const },
+  { text: '  ✓ aws_s3_bucket: 5 rule(s) generated', type: 'success' as const },
+  { text: '  ✓ aws_s3_bucket_versioning: 5 rule(s) generated', type: 'success' as const },
+  { text: '  ✓ aws_instance: 5 rule(s) generated', type: 'success' as const },
+  { text: '  ✓ aws_security_group: 5 rule(s) generated', type: 'success' as const },
   { text: '', type: 'output' as const },
-  { text: '✓  Rule 1: rds-encryption-at-rest (HIGH)', type: 'success' as const },
-  { text: '✓  Rule 2: rds-deletion-protection (HIGH)', type: 'success' as const },
-  { text: '✓  Rule 3: rds-multi-az-enabled (MEDIUM)', type: 'success' as const },
-  { text: '✓  Rule 4: rds-backup-retention-7days (HIGH)', type: 'success' as const },
-  { text: '✓  Rule 5: rds-no-public-access (CRITICAL)', type: 'success' as const },
-  { text: '', type: 'output' as const },
-  { text: 'Saved to: ./riveter-generated-rds-rules.yaml', type: 'success' as const },
+  { text: '# Generated by riveter generate-rules', type: 'output' as const },
+  { text: '# Review and customize before use:', type: 'output' as const },
+  { text: '#   riveter scan -r <this-file> -t <terraform-path>', type: 'output' as const },
 ]
 
-const aiGeneratedYaml = `# riveter-generated-rds-rules.yaml
-# Generated by riveter generate-rules
-rules:
-  - id: rds-encryption-at-rest
-    name: RDS Instance Must Be Encrypted at Rest
-    severity: high
-    description: >
-      RDS instances containing sensitive data must have storage
-      encryption enabled to protect data at rest.
-    resource_type: aws_db_instance
-    conditions:
-      - field: storage_encrypted
-        operator: equals
-        value: true
-
-  - id: rds-deletion-protection
-    name: RDS Instance Must Have Deletion Protection
-    severity: high
-    description: Prevents accidental deletion of production databases.
-    resource_type: aws_db_instance
-    conditions:
-      - field: deletion_protection
-        operator: equals
-        value: true
-
-  - id: rds-no-public-access
-    name: RDS Instance Must Not Be Publicly Accessible
-    severity: critical
-    description: >
-      RDS instances must not be exposed to the public internet.
-      Use VPC private subnets and security groups.
-    resource_type: aws_db_instance
-    conditions:
-      - field: publicly_accessible
-        operator: equals
-        value: false`
+const aiGeneratedYaml = `rules:
+- id: s3-bucket-required-tags
+  resource_type: aws_s3_bucket
+  description: S3 buckets must have required governance tags
+  assert:
+    tags.Environment: present
+    tags.Owner: present
+  metadata:
+    tags:
+    - governance
+    - tagging
+- id: s3-bucket-versioning-enabled
+  resource_type: aws_s3_bucket
+  description: S3 buckets must have versioning enabled
+  assert:
+    versioning.enabled: true
+  metadata:
+    tags:
+    - data-protection
+    - versioning
+- id: s3-bucket-server-side-encryption
+  resource_type: aws_s3_bucket
+  description: S3 buckets must have server-side encryption configured
+  assert:
+    server_side_encryption_configuration: present
+  metadata:
+    tags:
+    - encryption
+    - security
+- id: s3-bucket-public-access-blocked
+  resource_type: aws_s3_bucket
+  description: S3 buckets must block all public access
+  assert:
+    public_access_block.block_public_acls: true
+    public_access_block.block_public_policy: true
+    public_access_block.ignore_public_acls: true
+    public_access_block.restrict_public_buckets: true
+  metadata:
+    tags:
+    - security
+    - access-control
+- id: s3-bucket-logging-enabled
+  resource_type: aws_s3_bucket
+  description: S3 buckets must have access logging enabled
+  assert:
+    logging: present
+  metadata:
+    tags:
+    - logging
+    - audit
+    - compliance
+- id: s3-bucket-versioning-must-be-enabled
+  resource_type: aws_s3_bucket_versioning
+  description: S3 bucket versioning must be enabled for data protection and compliance
+  assert:
+    versioning_configuration[0].status: Enabled
+  metadata:
+    tags:
+    - s3
+    - versioning
+    - data-protection
+    references:
+    - https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+- id: s3-bucket-versioning-not-suspended
+  resource_type: aws_s3_bucket_versioning
+  description: S3 bucket versioning should not be suspended as it reduces data protection
+  assert:
+    versioning_configuration[0].status:
+      ne: Suspended
+  metadata:
+    tags:
+    - s3
+    - versioning
+    - data-protection
+- id: s3-bucket-versioning-configuration-present
+  resource_type: aws_s3_bucket_versioning
+  description: S3 bucket versioning configuration must be explicitly defined
+  assert:
+    versioning_configuration: present
+    versioning_configuration[0].status: present
+  metadata:
+    tags:
+    - s3
+    - configuration
+- id: s3-bucket-versioning-has-bucket-reference
+  resource_type: aws_s3_bucket_versioning
+  description: S3 bucket versioning must reference a valid bucket
+  assert:
+    bucket: present
+  metadata:
+    tags:
+    - s3
+    - configuration
+- id: s3-bucket-versioning-mfa-delete-for-sensitive
+  resource_type: aws_s3_bucket_versioning
+  description: S3 bucket versioning should enable MFA delete for sensitive buckets
+  filter:
+    tags.Sensitivity: high
+  assert:
+    versioning_configuration[0].mfa_delete: Enabled
+  metadata:
+    tags:
+    - s3
+    - mfa
+    - security
+    references:
+    - https://docs.aws.amazon.com/AmazonS3/latest/userguide/MultiFactorAuthenticationDelete.html
+- id: ec2-root-volume-encrypted
+  resource_type: aws_instance
+  description: EC2 root block device must be encrypted
+  assert:
+    root_block_device.encrypted: true
+  metadata:
+    tags:
+    - encryption
+    - security
+    references:
+    - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSEncryption.html
+- id: ec2-no-public-ip-assignment
+  resource_type: aws_instance
+  description: EC2 instances should not automatically assign public IP addresses
+  assert:
+    associate_public_ip_address: false
+  metadata:
+    tags:
+    - network
+    - security
+    references:
+    - https://docs.aws.amazon.com/vpc/latest/userguide/vpc-ip-addressing.html
+- id: ec2-required-governance-tags
+  resource_type: aws_instance
+  description: EC2 instances must have required governance tags
+  assert:
+    tags.Environment: present
+    tags.Owner: present
+  metadata:
+    tags:
+    - governance
+    - tagging
+    references:
+    - https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html
+- id: ec2-approved-instance-types
+  resource_type: aws_instance
+  description: EC2 instances must use approved instance types from current generation families
+  assert:
+    instance_type:
+      regex: ^(t3|t4g|m5|m6i|c5|c6i|r5|r6i)\\.(nano|micro|small|medium|large|xlarge|2xlarge|4xlarge)$
+  metadata:
+    tags:
+    - cost-optimization
+    - governance
+    references:
+    - https://docs.aws.amazon.com/ec2/latest/userguide/instance-types.html
+- id: ec2-root-volume-size-limit
+  resource_type: aws_instance
+  description: EC2 root volume size should not exceed reasonable limits
+  assert:
+    root_block_device.volume_size:
+      lte: 100
+  metadata:
+    tags:
+    - cost-optimization
+    - storage
+    references:
+    - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-volume-types.html
+- id: sg-no-unrestricted-ssh-ingress
+  resource_type: aws_security_group
+  description: Security groups must not allow SSH access from 0.0.0.0/0
+  assert:
+    ingress:
+      subset:
+      - from_port: 22
+        to_port: 22
+        protocol: tcp
+        cidr_blocks:
+          contains: 0.0.0.0/0
+  metadata:
+    tags:
+    - security
+    - ssh
+    - access-control
+- id: sg-no-unrestricted-ingress
+  resource_type: aws_security_group
+  description: Security groups must not allow ingress from 0.0.0.0/0 on all ports
+  assert:
+    ingress:
+      subset:
+      - from_port: 0
+        to_port: 65535
+        protocol: '-1'
+        cidr_blocks:
+          contains: 0.0.0.0/0
+  metadata:
+    tags:
+    - security
+    - access-control
+- id: sg-description-required
+  resource_type: aws_security_group
+  description: Security groups must have a meaningful description
+  assert:
+    description:
+      length:
+        gte: 10
+  metadata:
+    tags:
+    - documentation
+    - governance
+- id: sg-required-tags
+  resource_type: aws_security_group
+  description: Security groups must have required governance tags
+  assert:
+    tags.Environment: present
+    tags.Owner: present
+  metadata:
+    tags:
+    - governance
+    - tagging
+- id: sg-vpc-required
+  resource_type: aws_security_group
+  description: Security groups must be associated with a VPC
+  assert:
+    vpc_id:
+      regex: ^vpc-[a-f0-9]{8,17}$
+  metadata:
+    tags:
+    - networking
+    - vpc`
 
 const tabs = [
   {
@@ -352,86 +572,8 @@ const tabs = [
         </p>
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           <TerminalWindow title="riveter generate-rules" lines={aiRulesTerminal} />
-          <CodeBlock code={aiGeneratedYaml} language="yaml" filename="riveter-generated-rds-rules.yaml" />
+          <CodeBlock code={aiGeneratedYaml} language="yaml" filename="riveter-generated-rules.yaml" />
         </div>
-      </div>
-    ),
-  },
-  {
-    id: 'output-formats',
-    label: 'Output Formats',
-    content: (
-      <div className="space-y-8">
-        <p className="text-[var(--color-text-secondary)]">
-          Choose the right output format for your workflow with the <code className="font-mono text-sm bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-1.5 py-0.5 rounded">--output</code> flag.
-        </p>
-        {[
-          {
-            format: 'json',
-            flag: '--output json',
-            desc: 'Machine-readable output for dashboards, custom tooling, or further processing.',
-            code: `{
-  "summary": {
-    "resources_scanned": 3,
-    "rules_evaluated": 26,
-    "total": 26,
-    "failed": 4,
-    "passed": 1,
-    "skipped": 21
-  },
-  "results": [
-    {
-      "status": "FAIL",
-      "rule_id": "ec2_no_public_ip",
-      "resource": "aws_instance.web_server",
-      "message": "Expected 'associate_public_ip_address' to equal False, got True"
-    },
-    {
-      "status": "FAIL",
-      "rule_id": "s3_bucket_encryption",
-      "resource": "aws_s3_bucket.data_lake",
-      "message": "server_side_encryption_configuration is missing or empty"
-    },
-    {
-      "status": "PASS",
-      "rule_id": "ec2_approved_instance_types",
-      "resource": "aws_instance.web_server",
-      "message": "All checks passed"
-    }
-  ]
-}`,
-          },
-          {
-            format: 'sarif',
-            flag: '--output sarif',
-            desc: 'GitHub Advanced Security compatible. Violations show as inline code annotations on PRs.',
-            code: `{
-  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
-  "version": "2.1.0",
-  "runs": [{ "tool": { "driver": { "name": "riveter" } },
-    "results": [{
-      "ruleId": "ec2_no_public_ip",
-      "level": "error",
-      "message": { "text": "Expected 'associate_public_ip_address' to equal False, got True" },
-      "locations": [{ "physicalLocation": {
-        "artifactLocation": { "uri": "main.tf" },
-        "region": { "startLine": 4 }
-      }}]
-    }]
-  }]
-}`,
-          },
-        ].map(({ format, flag, desc, code }) => (
-          <div key={format}>
-            <div className="flex items-center gap-2 mb-2">
-              <code className="text-xs font-mono bg-[var(--color-surface-2)] text-[var(--color-accent-light)] px-2 py-1 rounded border border-[var(--color-border)]">
-                {flag}
-              </code>
-              <span className="text-sm text-[var(--color-text-secondary)]">{desc}</span>
-            </div>
-            <CodeBlock code={code} language="json" />
-          </div>
-        ))}
       </div>
     ),
   },
